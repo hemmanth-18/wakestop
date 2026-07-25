@@ -7,7 +7,7 @@ import { JWT_SECRET } from "../middleware/auth.js";
 
 const router = Router();
 
-router.post("/register", async (req, res) => {
+router.post(["/register", "/api/auth/register", "/auth/register"], async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
@@ -29,7 +29,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post(["/login", "/api/auth/login", "/auth/login"], async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {

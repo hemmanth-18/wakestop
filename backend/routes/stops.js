@@ -15,7 +15,7 @@ function distanceMetres(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-router.get("/", async (req, res) => {
+router.get(["/", "/api/stops", "/stops"], async (req, res) => {
   try {
     const stops = await db.stops.all();
     res.json(stops);
@@ -25,7 +25,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/search", async (req, res) => {
+router.get(["/search", "/api/stops/search", "/stops/search"], async (req, res) => {
   try {
     const { q } = req.query;
     const stops = await db.stops.search(q || "");
@@ -36,7 +36,7 @@ router.get("/search", async (req, res) => {
   }
 });
 
-router.get("/nearby", async (req, res) => {
+router.get(["/nearby", "/api/stops/nearby", "/stops/nearby"], async (req, res) => {
   try {
     const { lat, lng, radius } = req.query;
     const latitude = parseFloat(lat);

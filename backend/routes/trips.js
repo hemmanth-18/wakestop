@@ -6,7 +6,7 @@ import { requireAuth } from "../middleware/auth.js";
 const router = Router();
 router.use(requireAuth);
 
-router.post("/start", async (req, res) => {
+router.post(["/start", "/api/trips/start", "/trips/start"], async (req, res) => {
   try {
     const { destinationName, destinationLat, destinationLng, startName, startLat, startLng } = req.body;
     if (!destinationName || destinationLat == null || destinationLng == null) {
@@ -29,7 +29,7 @@ router.post("/start", async (req, res) => {
   }
 });
 
-router.post("/:id/end", async (req, res) => {
+router.post(["/:id/end", "/api/trips/:id/end", "/trips/:id/end"], async (req, res) => {
   try {
     const trip = await db.trips.findById(req.params.id);
     if (!trip || trip.userId !== req.userId) {
@@ -43,7 +43,7 @@ router.post("/:id/end", async (req, res) => {
   }
 });
 
-router.get("/history", async (req, res) => {
+router.get(["/history", "/api/trips/history", "/trips/history"], async (req, res) => {
   try {
     const trips = await db.trips.findByUser(req.userId);
     res.json(trips);
