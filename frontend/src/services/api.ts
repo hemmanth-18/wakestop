@@ -1,11 +1,21 @@
 const getBaseUrl = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
+  const envUrl = import.meta.env.VITE_API_URL;
+
+  // In production (e.g. Vercel), use relative /api unless a valid remote HTTPS URL is provided
   if (import.meta.env.PROD) {
+    if (envUrl && envUrl.startsWith("https://")) {
+      return envUrl;
+    }
     return "/api";
   }
-  const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
+
+  // In development, if custom non-localhost env URL exists, use it
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+    return envUrl;
+  }
+
+  // Otherwise dynamically use the current device's hostname (e.g. 10.229.4.203, 192.168.x.x)
+  const host = typeof window !== "undefined" && window.location.hostname ? window.location.hostname : "localhost";
   return `http://${host}:4000/api`;
 };
 

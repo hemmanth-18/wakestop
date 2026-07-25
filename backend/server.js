@@ -44,8 +44,8 @@ app.use((req, res) => res.status(404).json({ error: "Not found" }));
 seedStops();
 
 if (process.env.VERCEL !== "1") {
-  app.listen(PORT, () => {
-    console.log(`WakeStop backend listening on http://localhost:${PORT}`);
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`WakeStop backend listening on http://0.0.0.0:${PORT}`);
   });
 }
 
