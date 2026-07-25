@@ -1,4 +1,15 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (import.meta.env.PROD) {
+    return "/api";
+  }
+  const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
+  return `http://${host}:4000/api`;
+};
+
+const BASE_URL = getBaseUrl();
 
 type RequestOptions = {
   method?: string;
