@@ -32,11 +32,12 @@ app.options("*", (req, res) => {
 app.use(express.json());
 app.use(morgan("dev"));
 
-app.get("/api/health", (req, res) => res.json({ ok: true, service: "wakestop-backend" }));
+// Match routes with or without /api prefix for Vercel serverless routing
+app.get(["/api/health", "/health"], (req, res) => res.json({ ok: true, service: "wakestop-backend" }));
 
-app.use("/api/auth", authRoutes);
-app.use("/api/trips", tripRoutes);
-app.use("/api/stops", stopRoutes);
+app.use(["/api/auth", "/auth"], authRoutes);
+app.use(["/api/trips", "/trips"], tripRoutes);
+app.use(["/api/stops", "/stops"], stopRoutes);
 
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 
