@@ -1,20 +1,11 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { api, type User } from "../services/api";
+import { createContext, useContext, useState, useEffect } from "react";
+import { api } from "../services/api";
 
-interface AuthContextValue {
-  user: User | null;
-  token: string | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-}
+const AuthContext = createContext(undefined);
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,19 +18,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  function persist(t: string, u: User) {
+  function persist(t, u) {
     localStorage.setItem("wakestop_token", t);
     localStorage.setItem("wakestop_user", JSON.stringify(u));
     setToken(t);
     setUser(u);
   }
 
-  async function login(email: string, password: string) {
+  async function login(email, password) {
     const res = await api.login(email, password);
     persist(res.token, res.user);
   }
 
-  async function register(name: string, email: string, password: string) {
+  async function register(name, email, password) {
     const res = await api.register(name, email, password);
     persist(res.token, res.user);
   }

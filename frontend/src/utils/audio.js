@@ -1,17 +1,4 @@
-export type SoundPreset =
-  | "cyber_siren"
-  | "digital_pulse"
-  | "synth_horn"
-  | "radar_beep"
-  | "thunder_alert";
-
-export interface SoundOption {
-  id: SoundPreset;
-  name: string;
-  description: string;
-}
-
-export const SOUND_OPTIONS: SoundOption[] = [
+export const SOUND_OPTIONS = [
   {
     id: "cyber_siren",
     name: "Cyber Siren",
@@ -39,33 +26,33 @@ export const SOUND_OPTIONS: SoundOption[] = [
   },
 ];
 
-export function getSavedSoundPreset(): SoundPreset {
+export function getSavedSoundPreset() {
   const saved = localStorage.getItem("wakestop_sound_preset");
   if (saved && SOUND_OPTIONS.some((opt) => opt.id === saved)) {
-    return saved as SoundPreset;
+    return saved;
   }
   return "cyber_siren";
 }
 
-export function saveSoundPreset(preset: SoundPreset) {
+export function saveSoundPreset(preset) {
   localStorage.setItem("wakestop_sound_preset", preset);
 }
 
-export function getVibrationEnabled(): boolean {
+export function getVibrationEnabled() {
   const saved = localStorage.getItem("wakestop_vibrate_enabled");
   return saved === null ? true : saved === "true";
 }
 
-export function saveVibrationEnabled(enabled: boolean) {
+export function saveVibrationEnabled(enabled) {
   localStorage.setItem("wakestop_vibrate_enabled", String(enabled));
 }
 
-let activeAudioCtx: AudioContext | null = null;
+let activeAudioCtx = null;
 
-export function playAlarmSound(preset: SoundPreset = getSavedSoundPreset(), stageMultiplier: number = 1) {
+export function playAlarmSound(preset = getSavedSoundPreset(), stageMultiplier = 1) {
   try {
     if (!activeAudioCtx || activeAudioCtx.state === "closed") {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       activeAudioCtx = new AudioContextClass();
     }
     const ctx = activeAudioCtx;

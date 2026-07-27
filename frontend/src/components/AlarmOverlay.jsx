@@ -1,22 +1,13 @@
-import type { AlarmStage } from "../hooks/useGeoTracking";
 import { formatDistance } from "../utils/geo";
 import { CheckIcon, ZapIcon, BellIcon } from "./Icons";
 
-
-interface Props {
-  stage: AlarmStage;
-  distance: number | null;
-  destinationName: string;
-  onAcknowledge: () => void;
-}
-
-const STAGE_COPY: Record<string, { title: string; sub: string }> = {
+const STAGE_COPY = {
   alarm: { title: "Getting close!", sub: "Start gathering your belongings." },
   critical: { title: "Wake Up Now!", sub: "Your destination is immediately approaching." },
   arrived: { title: "You've Arrived!", sub: "Journey completed safely." },
 };
 
-export default function AlarmOverlay({ stage, distance, destinationName, onAcknowledge }: Props) {
+export default function AlarmOverlay({ stage, distance, destinationName, onAcknowledge }) {
   if (stage !== "alarm" && stage !== "critical" && stage !== "arrived") return null;
 
   const copy = STAGE_COPY[stage];
@@ -83,4 +74,3 @@ export default function AlarmOverlay({ stage, distance, destinationName, onAckno
     </div>
   );
 }
-

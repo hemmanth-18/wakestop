@@ -1,18 +1,12 @@
-export interface RouteResult {
-  coordinates: [number, number][]; // Array of [lat, lng] for Leaflet
-  distanceMeters: number;
-  durationSeconds: number;
-}
-
 /**
  * Fetches actual driving route geometry and road distance using OSRM.
  */
 export async function fetchOsrmRoute(
-  startLat: number,
-  startLng: number,
-  destLat: number,
-  destLng: number
-): Promise<RouteResult | null> {
+  startLat,
+  startLng,
+  destLat,
+  destLng
+) {
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson`;
     const res = await fetch(url);
@@ -23,8 +17,8 @@ export async function fetchOsrmRoute(
 
     const route = data.routes[0];
     // OSRM returns GeoJSON coordinates as [lng, lat]. Leaflet expects [lat, lng].
-    const coordinates: [number, number][] = route.geometry.coordinates.map(
-      (coord: [number, number]) => [coord[1], coord[0]]
+    const coordinates = route.geometry.coordinates.map(
+      (coord) => [coord[1], coord[0]]
     );
 
     return {

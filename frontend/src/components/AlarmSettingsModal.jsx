@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   SOUND_OPTIONS,
-  type SoundPreset,
   getSavedSoundPreset,
   saveSoundPreset,
   getVibrationEnabled,
@@ -10,20 +9,14 @@ import {
 } from "../utils/audio";
 import { Volume2Icon, ZapIcon, SlidersIcon, CheckIcon } from "./Icons";
 
-
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export default function AlarmSettingsModal({ isOpen, onClose }: Props) {
-  const [selectedSound, setSelectedSound] = useState<SoundPreset>(getSavedSoundPreset());
-  const [vibrateOn, setVibrateOn] = useState<boolean>(getVibrationEnabled());
+export default function AlarmSettingsModal({ isOpen, onClose }) {
+  const [selectedSound, setSelectedSound] = useState(getSavedSoundPreset());
+  const [vibrateOn, setVibrateOn] = useState(getVibrationEnabled());
   const [playingSample, setPlayingSample] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSelectSound = (preset: SoundPreset) => {
+  const handleSelectSound = (preset) => {
     setSelectedSound(preset);
     saveSoundPreset(preset);
   };
@@ -37,7 +30,7 @@ export default function AlarmSettingsModal({ isOpen, onClose }: Props) {
     }
   };
 
-  const handleTestSound = (preset: SoundPreset) => {
+  const handleTestSound = (preset) => {
     setPlayingSample(true);
     playAlarmSound(preset, 1);
     setTimeout(() => setPlayingSample(false), 800);

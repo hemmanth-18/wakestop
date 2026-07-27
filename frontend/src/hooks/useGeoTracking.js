@@ -2,54 +2,40 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { distanceMetres } from "../utils/geo";
 import { playAlarmSound, getSavedSoundPreset, getVibrationEnabled } from "../utils/audio";
 
-export type AlarmStage = "idle" | "notify" | "alarm" | "critical" | "arrived" | "stopped";
-
-interface Destination {
-  lat: number;
-  lng: number;
-}
-
-interface Thresholds {
-  notifyM: number;
-  alarmM: number;
-  criticalM: number;
-  arrivedM: number;
-}
-
-const DEFAULT_THRESHOLDS: Thresholds = {
+const DEFAULT_THRESHOLDS = {
   notifyM: 2000,
   alarmM: 1000,
   criticalM: 500,
   arrivedM: 120,
 };
 
-function triggerAudio(stage: AlarmStage) {
+function triggerAudio(stage) {
   const mult = stage === "critical" ? 1.5 : stage === "alarm" ? 1.2 : 1.0;
   playAlarmSound(getSavedSoundPreset(), mult);
 }
 
-function vibrate(pattern: number | number[]) {
+function vibrate(pattern) {
   if (getVibrationEnabled() && "vibrate" in navigator) {
     navigator.vibrate(pattern);
   }
 }
 
-function notify(title: string, body: string) {
+function notify(title, body) {
   if (!("Notification" in window)) return;
   if (Notification.permission === "granted") {
     new Notification(title, { body });
   }
 }
 
-export function useGeoTracking(destination: Destination | null, thresholds: Thresholds = DEFAULT_THRESHOLDS) {
-  const [position, setPosition] = useState<GeolocationCoordinates | null>(null);
-  const [distance, setDistance] = useState<number | null>(null);
-  const [stage, setStage] = useState<AlarmStage>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const watchId = useRef<number | null>(null);
-  const repeatTimer = useRef<number | null>(null);
-  const wakeLockRef = useRef<any>(null);
-  const lastStage = useRef<AlarmStage>("idle");
+export function useGeoTracking(destination, thresholds = DEFAULT_THRESHOLDS) {
+  const [position, setPosition] = useState(null);
+  const [distance, setDistance] = useState(null);
+  const [stage, setStage] = useState("idle");
+  const [error, setError] = useState(null);
+  const watchId = useRef(null);
+  const repeatTimer = useRef(null);
+  const wakeLockRef = useRef(null);
+  const lastStage = useRef("idle");
   const manuallyStopped = useRef(false);
 
   const clearRepeatTimer = () => {
@@ -70,7 +56,7 @@ export function useGeoTracking(destination: Destination | null, thresholds: Thre
     if ("wakeLock" in navigator) {
       navigator.wakeLock
         .request("screen")
-        .then((lock: any) => {
+        .then((lock) => {
           wakeLockRef.current = lock;
         })
         .catch(() => {});
@@ -100,7 +86,7 @@ export function useGeoTracking(destination: Destination | null, thresholds: Thre
         const d = distanceMetres(pos.coords.latitude, pos.coords.longitude, destination.lat, destination.lng);
         setDistance(d);
 
-        let nextStage: AlarmStage = stage;
+        let nextStage = stage;
         if (manuallyStopped.current) {
           nextStage = d <= thresholds.arrivedM ? "arrived" : "stopped";
         } else if (d <= thresholds.arrivedM) {
@@ -154,4 +140,3 @@ export function useGeoTracking(destination: Destination | null, thresholds: Thre
 
   return { position, distance, stage, error, acknowledge };
 }
-

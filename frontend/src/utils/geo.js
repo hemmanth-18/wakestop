@@ -1,11 +1,6 @@
-export function distanceMetres(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
+export function distanceMetres(lat1, lon1, lat2, lon2) {
   const R = 6371000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
+  const toRad = (d) => (d * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   const a =
@@ -14,14 +9,13 @@ export function distanceMetres(
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-export function formatDistance(m: number): string {
+export function formatDistance(m) {
   if (m >= 1000) return `${(m / 1000).toFixed(1)} km`;
   return `${Math.round(m)} m`;
 }
 
 // Rough ETA assuming a long-distance bus average speed of ~45 km/h.
-// This is a placeholder — swap for OSRM route-duration once route snapping is added.
-export function estimateEtaMinutes(m: number, avgSpeedKmh = 45): number {
+export function estimateEtaMinutes(m, avgSpeedKmh = 45) {
   const km = m / 1000;
   return Math.round((km / avgSpeedKmh) * 60);
 }

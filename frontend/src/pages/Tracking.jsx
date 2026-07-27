@@ -8,7 +8,7 @@ import AlarmSettingsModal from "../components/AlarmSettingsModal";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
 import { formatDistance, estimateEtaMinutes } from "../utils/geo";
 import { fetchOsrmRoute } from "../services/routing";
-import { api, type Trip } from "../services/api";
+import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { SlidersIcon, NavigationIcon, ZapIcon, Volume2Icon, ClockIcon } from "../components/Icons";
 import { getSavedSoundPreset, getVibrationEnabled, SOUND_OPTIONS } from "../utils/audio";
@@ -28,7 +28,7 @@ const stopSvgIcon = new L.DivIcon({
   iconAnchor: [17, 34],
 });
 
-function Recenter({ lat, lng }: { lat: number; lng: number }) {
+function Recenter({ lat, lng }) {
   const map = useMap();
   useEffect(() => {
     map.setView([lat, lng], map.getZoom(), { animate: true });
@@ -41,12 +41,12 @@ export default function Tracking() {
   const location = useLocation();
   const nav = useNavigate();
   const { token } = useAuth();
-  const [trip, setTrip] = useState<Trip | null>((location.state as any)?.trip ?? null);
+  const [trip, setTrip] = useState(location.state?.trip ?? null);
   const [ended, setEnded] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // OSRM Road Route Geometry
-  const [roadPolyline, setRoadPolyline] = useState<[number, number][]>([]);
+  const [roadPolyline, setRoadPolyline] = useState([]);
 
   const destination = useMemo(
     () => (trip ? { lat: trip.destination.lat, lng: trip.destination.lng } : null),
@@ -60,14 +60,14 @@ export default function Tracking() {
       api
         .tripHistory(token)
         .then((trips) => setTrip(trips.find((t) => t.id === id) || null))
-        .catch(() => { });
+        .catch(() => {});
     }
   }, [trip, token, id]);
 
   useEffect(() => {
     if (stage === "arrived" && trip && token && !ended) {
       setEnded(true);
-      api.endTrip(token, trip.id).catch(() => { });
+      api.endTrip(token, trip.id).catch(() => {});
     }
   }, [stage, trip, token, ended]);
 
@@ -104,7 +104,7 @@ export default function Tracking() {
     );
   }
 
-  const stageBadge: Record<string, { label: string; classes: string }> = {
+  const stageBadge = {
     idle: { label: "Tracking Live", classes: "border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.2)]" },
     notify: { label: "2 km — Approaching", classes: "border-neon-purple/40 bg-neon-purple/20 text-neon-purple shadow-[0_0_15px_rgba(176,38,255,0.3)]" },
     alarm: { label: "1 km — Wake Up", classes: "border-neon-gold bg-neon-gold text-night-950 font-bold shadow-[0_0_20px_rgba(255,184,0,0.5)]" },

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
-import { api, type Stop } from "../services/api";
+import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
 import { SearchIcon, MapPinIcon, BusIcon, NavigationIcon, CheckIcon, SlidersIcon } from "../components/Icons";
@@ -15,7 +15,7 @@ const customPickerIcon = new L.DivIcon({
   iconAnchor: [18, 36],
 });
 
-function MapClickHandler({ onSelect }: { onSelect: (lat: number, lng: number) => void }) {
+function MapClickHandler({ onSelect }) {
   useMapEvents({
     click(e) {
       onSelect(e.latlng.lat, e.latlng.lng);
@@ -24,7 +24,7 @@ function MapClickHandler({ onSelect }: { onSelect: (lat: number, lng: number) =>
   return null;
 }
 
-function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
+function MapController({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
     map.flyTo(center, zoom, { duration: 1.5 });
@@ -32,25 +32,18 @@ function MapController({ center, zoom }: { center: [number, number]; zoom: numbe
   return null;
 }
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-}
-
 export default function SelectDestination() {
   const { token } = useAuth();
   const nav = useNavigate();
 
-  const [mode, setMode] = useState<"map" | "coordinates" | "stops">("map");
+  const [mode, setMode] = useState("map");
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Stop[]>([]);
-  const [allStops, setAllStops] = useState<Stop[]>([]);
-  const [selected, setSelected] = useState<Stop | null>(null);
+  const [results, setResults] = useState([]);
+  const [allStops, setAllStops] = useState([]);
+  const [selected, setSelected] = useState(null);
 
   // Custom Map Picker state
-  const [mapPin, setMapPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapPin, setMapPin] = useState(null);
   const [customName, setCustomName] = useState("");
   const [geocoding, setGeocoding] = useState(false);
 
@@ -59,15 +52,15 @@ export default function SelectDestination() {
   const [inputLng, setInputLng] = useState("");
 
   // Map view & location search state
-  const [mapCenter, setMapCenter] = useState<[number, number]>([11.0168, 76.9558]); // Default Coimbatore area
+  const [mapCenter, setMapCenter] = useState([11.0168, 76.9558]); // Default Coimbatore area
   const [mapZoom, setMapZoom] = useState(10);
   const [mapSearchQuery, setMapSearchQuery] = useState("");
-  const [mapSearchResults, setMapSearchResults] = useState<NominatimResult[]>([]);
+  const [mapSearchResults, setMapSearchResults] = useState([]);
   const [isMapSearching, setIsMapSearching] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState(null);
 
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     api.allStops().then(setAllStops).catch(() => {});
@@ -100,7 +93,7 @@ export default function SelectDestination() {
           )}&limit=5`
         );
         if (res.ok) {
-          const data: NominatimResult[] = await res.json();
+          const data = await res.json();
           setMapSearchResults(data);
         }
       } catch {
@@ -113,7 +106,7 @@ export default function SelectDestination() {
     return () => clearTimeout(timer);
   }, [mapSearchQuery]);
 
-  const selectSearchResult = (item: NominatimResult) => {
+  const selectSearchResult = (item) => {
     const lat = parseFloat(item.lat);
     const lng = parseFloat(item.lon);
     const parts = item.display_name.split(",");
@@ -130,7 +123,7 @@ export default function SelectDestination() {
     setStatusMessage(`Zoomed map to "${shortName}". Tap on map to adjust pin.`);
   };
 
-  const handleMapSearchSubmit = async (e: React.FormEvent) => {
+  const handleMapSearchSubmit = async (e) => {
     e.preventDefault();
     if (!mapSearchQuery.trim()) return;
 
@@ -147,7 +140,7 @@ export default function SelectDestination() {
         )}&limit=5`
       );
       if (res.ok) {
-        const data: NominatimResult[] = await res.json();
+        const data = await res.json();
         if (data.length > 0) {
           selectSearchResult(data[0]);
         } else {
@@ -161,7 +154,7 @@ export default function SelectDestination() {
     }
   };
 
-  const handleMapClick = async (lat: number, lng: number) => {
+  const handleMapClick = async (lat, lng) => {
     setMapPin({ lat, lng });
     setInputLat(lat.toFixed(5));
     setInputLng(lng.toFixed(5));
@@ -190,7 +183,7 @@ export default function SelectDestination() {
   };
 
   // Set pin using explicit Latitude and Longitude
-  const handleApplyCoordinates = (e?: React.FormEvent) => {
+  const handleApplyCoordinates = (e) => {
     if (e) e.preventDefault();
     const lat = parseFloat(inputLat);
     const lng = parseFloat(inputLng);
@@ -210,9 +203,9 @@ export default function SelectDestination() {
   async function startTrip() {
     if (!token) return;
 
-    let destLat: number;
-    let destLng: number;
-    let destName: string;
+    let destLat;
+    let destLng;
+    let destName;
 
     if (mode === "stops" && selected) {
       destLat = selected.latitude;
@@ -229,10 +222,10 @@ export default function SelectDestination() {
     setStarting(true);
     setError(null);
     try {
-      let startLat: number | undefined;
-      let startLng: number | undefined;
+      let startLat;
+      let startLng;
       if ("geolocation" in navigator) {
-        await new Promise<void>((resolve) => {
+        await new Promise((resolve) => {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               startLat = pos.coords.latitude;

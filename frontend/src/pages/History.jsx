@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type Trip } from "../services/api";
+import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
 import { HistoryIcon, NavigationIcon, MapPinIcon, CheckIcon, ZapIcon } from "../components/Icons";
 
 export default function History() {
   const { token } = useAuth();
-  const [trips, setTrips] = useState<Trip[]>([]);
+  const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

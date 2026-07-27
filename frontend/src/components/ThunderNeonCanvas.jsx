@@ -1,11 +1,7 @@
 import { useEffect, useRef } from "react";
 
-interface Props {
-  isCritical?: boolean;
-}
-
-export default function ThunderNeonCanvas({ isCritical = false }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+export default function ThunderNeonCanvas({ isCritical = false }) {
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -14,7 +10,7 @@ export default function ThunderNeonCanvas({ isCritical = false }: Props) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let animId: number;
+    let animId;
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
@@ -37,7 +33,7 @@ export default function ThunderNeonCanvas({ isCritical = false }: Props) {
     }));
 
     let lightningTimer = 0;
-    let lightningSegments: { x1: number; y1: number; x2: number; y2: number }[] = [];
+    let lightningSegments = [];
 
     const generateLightning = () => {
       lightningSegments = [];
