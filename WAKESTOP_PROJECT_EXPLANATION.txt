@@ -1,0 +1,138 @@
+================================================================================
+                  WAKESTOP — COMPLETE TECHNICAL DOCUMENTATION
+================================================================================
+
+1. PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+WakeStop is a real-time, location-aware web application designed to protect commuters and long-distance bus travelers from oversleeping and missing their stops. By continuously monitoring the device's live GPS coordinates, WakeStop calculates the distance to the user's selected destination and triggers escalating multi-stage audio ringtones, screen flashes, and device vibration patterns as the vehicle approaches the target stop.
+
+Key Features:
+- Interactive Location Selection (Leaflet map pin picker, manual Lat/Lng input, and bus corridor stop search).
+- Live Geolocation Tracking with HTML5 Geolocation API and Screen Wake Lock to prevent mobile sleep.
+- Real-world road geometry plotting using OSRM (Open Source Routing Machine).
+- Multi-tier Distance Alerts (2 km approach notification, 1 km escalating alarm, 500 m critical wake-up alarm).
+- Web Audio API Sound Synthesizer featuring 5 customizable neon/cyber sound presets (Cyber Siren, Digital Pulse, Synth Horn, Radar Beep, Thunder Alert).
+- Device Vibration Patterns (via HTML5 Vibration API).
+- Cloud Database Authentication and Persistent Trip History powered by Supabase and JWT.
+
+
+2. COMPLETE TECH STACK
+--------------------------------------------------------------------------------
+FRONTEND:
+- Framework: React 19 (JavaScript ES6+ / JSX)
+- Build Tool: Vite 8
+- Styling: TailwindCSS v4 with custom dark/neon design system & CSS glassmorphic animations
+- Map Rendering: Leaflet 1.9 & React-Leaflet 5
+- Map Tiles: OpenStreetMap tile servers
+- Geocoding & Search: Nominatim OpenStreetMap API
+- Road Geometry & Routing: OSRM (Open Source Routing Machine) API
+- Audio Engine: Web Audio API (custom synthesized sound oscillators)
+- State Management & Routing: React Context API & React Router DOM v7
+
+BACKEND:
+- Server Runtime: Node.js (ES Modules `"type": "module"`)
+- Web Framework: Express 4
+- Security & Auth: JSON Web Tokens (`jsonwebtoken`), bcrypt password hashing (`bcryptjs`), CORS middleware (`cors`)
+- Environment Config: `dotenv`
+
+DATABASE:
+- Cloud DB: Supabase (PostgreSQL) strictly connected via `@supabase/supabase-js` client SDK
+- Relational Schema: `users`, `trips`, `stops` tables
+
+HOSTING & DEPLOYMENT:
+- Static Frontend Hosting: Vercel Static Build (`frontend/dist`)
+- Serverless Backend Functions: Vercel Serverless Functions (`@vercel/node` / Express middleware bridge)
+- Version Control: Git & GitHub (`hemmanth-18/wakestop`)
+
+
+3. MAPS, GEOCODING & ROUTING ARCHITECTURE
+--------------------------------------------------------------------------------
+A) OpenStreetMap & Leaflet Integration:
+   - Interactive maps are rendered using Leaflet (`react-leaflet`).
+   - Custom SVG marker pins represent the user's live position and target destination.
+
+B) Nominatim Reverse & Forward Geocoding:
+   - Forward Geocoding: Converts typed search queries (e.g. "Salem", "CMBT") into latitude/longitude coordinates via `https://nominatim.openstreetmap.org/search`.
+   - Reverse Geocoding: Converts map clicks into human-readable place titles via `https://nominatim.openstreetmap.org/reverse`.
+
+C) OSRM Road Geometry Routing Engine:
+   - Rather than drawing flat straight lines across land, WakeStop queries the OSRM Driving API (`https://router.project-osrm.org/route/v1/driving/`) using starting and destination coordinates.
+   - Converts GeoJSON `[longitude, latitude]` arrays into Leaflet-compatible `[latitude, longitude]` polyline coordinates to display actual driving paths along roads.
+
+
+4. MATHEMATICAL & GEOSPATIAL ALGORITHMS
+--------------------------------------------------------------------------------
+A) Haversine Distance Formula (Great-Circle Distance):
+   - Computes the shortest distance between two points on the surface of a sphere (Earth) using latitude and longitude:
+     
+     a = sin²(Δlat/2) + cos(lat1) * cos(lat2) * sin²(Δlon/2)
+     c = 2 * atan2(√a, √(1-a))
+     d = R * c  (where R = 6,371,000 meters)
+
+   - Implemented in `backend/routes/stops.js` and `frontend/src/utils/geo.js` to accurately calculate distance to destination even when GPS updates frequently.
+
+B) Distance-Based Geofencing State Machine:
+   - Evaluates live distance `d` against predefined thresholds:
+     * `d > 2000m`: Idle State (Normal tracking)
+     * `2000m ≥ d > 1000m`: Notify State (Subtle notification chime)
+     * `1000m ≥ d > 500m`: Alarm State (Escalating audio pitch + vibration)
+     * `500m ≥ d > 120m`: Critical State (Continuous thunder alarm + 15s repeating vibration until acknowledged)
+     * `d ≤ 120m`: Arrived State (Trip automatically marked completed)
+
+C) Estimated Time of Arrival (ETA) Calculation:
+   - Rough bus transit ETA is computed based on average long-distance bus speeds (~45 km/h):
+     ETA (minutes) = (Distance in km / 45) * 60
+
+
+5. LOCALHOST VS. HOSTED ENVIRONMENT ISSUES (WHY IT WORKED ON LOCALHOST BUT FAILED ON VERCEL)
+--------------------------------------------------------------------------------
+ISSUE #1: HTTP 405 Method Not Allowed on POST /api/auth/login
+--------------------------------------------------------------
+- Why it worked on Localhost:
+  On localhost, you ran `node server.js` as a standalone Express server listening on port 4000. When the frontend sent `POST http://localhost:4000/api/auth/login`, `req.url` arrived as `/api/auth/login`. Express matched `app.use(["/api/auth", "/auth"], authRoutes)` and routed to the POST handler without issue.
+
+- Why it failed when hosted on Vercel:
+  1. Vercel static deployments serve built HTML/JS files (`frontend/dist`). By default, static web servers only allow `GET` and `HEAD` requests for static files like `index.html`.
+  2. When Vercel evaluated `vercel.json` rewrites that attempted to map `/api/(.*)` to static `/api/index.js`, Vercel looked for `/api/index.js` inside the static output directory `frontend/dist`. Because `/api/index.js` did not exist in Vite's static build output, Vercel fell back to serving static `index.html`.
+  3. Sending a `POST` request to static `index.html` caused Vercel's edge network to reject the request with `HTTP 405 Method Not Allowed` (`Content-Disposition: inline; filename="index.html"`).
+
+ISSUE #2: Vercel Serverless Function Invocations & `req.url` Stripping
+----------------------------------------------------------------------
+- When Vercel compiles individual files inside `api/` (e.g. `api/auth/login.js`) into standalone Serverless Lambdas, Vercel strips the endpoint path before passing the request to the handler, leaving `req.url = "/"`.
+- Express routers mounted strictly under `app.use("/api/auth", authRoutes)` failed to match `req.url = "/"` and returned `404 Not Found`, which Vercel converted to `405`.
+
+ISSUE #3: Missing Backend Dependencies in `frontend/package.json`
+-----------------------------------------------------------------
+- When a Vercel project is configured with Root Directory set to `frontend`, Vercel only runs `npm install` inside `frontend/`.
+- `frontend/package.json` previously lacked backend dependencies (`express`, `cors`, `@supabase/supabase-js`, `bcryptjs`, `jsonwebtoken`, `morgan`, `uuid`).
+- When Vercel attempted to execute serverless functions importing `backend/server.js`, Node.js threw `Error: Cannot find module 'express'` / `Cannot find module '@supabase/supabase-js'`, resulting in `500 FUNCTION_INVOCATION_FAILED`.
+
+ISSUE #4: Top-Level `app.listen()` Execution during Module Load
+----------------------------------------------------------------
+- In serverless environments, calling `app.listen(PORT)` causes runtime port binding errors (`EADDRINUSE`) because serverless lambdas do not permit opening listening HTTP ports.
+
+
+6. FULL RESOLUTION & ARCHITECTURAL FIXES APPLIED
+--------------------------------------------------------------------------------
+1. Direct Express Export in Serverless Handlers:
+   - Updated all Vercel serverless function entry points (`api/*.js` and `frontend/api/*.js`) to export Express `app` directly (`export default app;`), allowing Vercel to natively manage request lifecycle and response completion.
+
+2. Route Path Flexibility in Express Routers:
+   - Updated `backend/routes/auth.js`, `backend/routes/trips.js`, and `backend/routes/stops.js` to match both prefixed (`/api/auth/login`, `/auth/login`) and root (`/login`, `/`) route definitions.
+
+3. Frontend Dependency Synchronization:
+   - Added `express`, `@supabase/supabase-js`, `bcryptjs`, `jsonwebtoken`, `cors`, `morgan`, and `uuid` to `frontend/package.json` so Vercel installs all required packages during build.
+
+4. Environmental Fallbacks for Supabase:
+   - Updated `backend/data/db.js` with fallback Supabase cloud credentials so serverless cold starts initialize cleanly even if custom environment variables are not manually set in Vercel.
+
+5. Restricted `app.listen()` Execution:
+   - Updated `backend/server.js` so `app.listen()` is only executed when running directly via CLI (`node server.js`) and never during serverless imports.
+
+6. Pure JavaScript Conversion:
+   - Converted all frontend files from TypeScript (`.ts`/`.tsx`) to clean JavaScript (`.js`/`.jsx`) to simplify Vite build pipeline and eliminate runtime type compilation overhead.
+
+
+================================================================================
+               WAKESTOP — PREPARED & GENERATED FOR YOUR REPOSITORY
+================================================================================
