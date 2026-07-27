@@ -1,65 +1,14 @@
 {
-  "version": 2,
-  "builds": [
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
     {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "frontend/dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/auth/login",
-      "dest": "/api/auth/login.js"
-    },
-    {
-      "src": "/api/auth/register",
-      "dest": "/api/auth/register.js"
-    },
-    {
-      "src": "/api/stops/search",
-      "dest": "/api/stops/search.js"
-    },
-    {
-      "src": "/api/stops/nearby",
-      "dest": "/api/stops/nearby.js"
-    },
-    {
-      "src": "/api/stops",
-      "dest": "/api/stops/index.js"
-    },
-    {
-      "src": "/api/trips/start",
-      "dest": "/api/trips/start.js"
-    },
-    {
-      "src": "/api/trips/history",
-      "dest": "/api/trips/history.js"
-    },
-    {
-      "src": "/api/trips/(.*)/end",
-      "dest": "/api/trips/[id]/end.js?id=$1"
-    },
-    {
-      "src": "/api/health",
-      "dest": "/api/health.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!api/.*).*)",
+      "destination": "/index.html"
     }
   ]
 }
