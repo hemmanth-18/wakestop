@@ -49,7 +49,7 @@ app.use(stopRoutes);
 
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 
-if (process.env.VERCEL !== "1") {
+if (process.argv[1] && process.argv[1].endsWith("server.js") && !process.env.VERCEL) {
   seedStops();
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`WakeStop backend listening on http://0.0.0.0:${PORT}`);
