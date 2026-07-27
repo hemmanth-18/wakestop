@@ -32,6 +32,14 @@ app.options("*", (req, res) => {
 app.use(express.json());
 app.use(morgan("dev"));
 
+// Normalize request URL for Vercel Serverless Function invocations
+app.use((req, res, next) => {
+  if (req.headers["x-matched-path"]) {
+    req.url = req.headers["x-matched-path"];
+  }
+  next();
+});
+
 // Match routes with or without /api prefix for Vercel serverless routing
 app.get(["/api/health", "/health"], (req, res) => res.json({ ok: true, service: "wakestop-backend" }));
 
