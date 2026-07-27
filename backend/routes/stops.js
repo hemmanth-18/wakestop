@@ -25,7 +25,7 @@ router.get(["/", "/api/stops", "/stops"], async (req, res) => {
   }
 });
 
-router.get(["/search", "/api/stops/search", "/stops/search"], async (req, res) => {
+router.get(["/", "/search", "/api/stops/search", "/stops/search"], async (req, res) => {
   try {
     const { q } = req.query;
     const stops = await db.stops.search(q || "");
@@ -36,7 +36,7 @@ router.get(["/search", "/api/stops/search", "/stops/search"], async (req, res) =
   }
 });
 
-router.get(["/nearby", "/api/stops/nearby", "/stops/nearby"], async (req, res) => {
+router.get(["/", "/nearby", "/api/stops/nearby", "/stops/nearby"], async (req, res) => {
   try {
     const { lat, lng, radius } = req.query;
     const latitude = parseFloat(lat);
