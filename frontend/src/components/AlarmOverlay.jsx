@@ -1,5 +1,6 @@
 import { formatDistance } from "../utils/geo";
 import { CheckIcon, ZapIcon, BellIcon } from "./Icons";
+import { stopAlarmSound } from "../utils/audio";
 
 const STAGE_COPY = {
   alarm: { title: "Getting close!", sub: "Start gathering your belongings." },
@@ -13,6 +14,11 @@ export default function AlarmOverlay({ stage, distance, destinationName, onAckno
   const copy = STAGE_COPY[stage];
   const isCritical = stage === "critical";
   const isArrived = stage === "arrived";
+
+  const handleAcknowledgeClick = () => {
+    stopAlarmSound();
+    onAcknowledge();
+  };
 
   return (
     <div
@@ -62,7 +68,7 @@ export default function AlarmOverlay({ stage, distance, destinationName, onAckno
 
       {!isArrived && (
         <button
-          onClick={onAcknowledge}
+          onClick={handleAcknowledgeClick}
           className="mt-10 rounded-2xl bg-night-950 px-10 py-5 font-display text-xl font-bold text-white shadow-[0_0_30px_rgba(0,0,0,0.6)] active:scale-95 transition-all hover:scale-105"
         >
           I've Woken Up

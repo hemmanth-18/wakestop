@@ -5,7 +5,8 @@ import L from "leaflet";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
-import { SearchIcon, MapPinIcon, BusIcon, NavigationIcon, CheckIcon, SlidersIcon } from "../components/Icons";
+import { SearchIcon, MapPinIcon, BusIcon, NavigationIcon, CheckIcon, SlidersIcon, ZapIcon, ClockIcon } from "../components/Icons";
+import { analyzeTravelPatterns } from "../utils/aiEngine";
 
 // Custom Leaflet SVG marker for map picker
 const customPickerIcon = new L.DivIcon({
@@ -41,6 +42,7 @@ export default function SelectDestination() {
   const [results, setResults] = useState([]);
   const [allStops, setAllStops] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [aiSuggestions, setAiSuggestions] = useState([]);
 
   // Custom Map Picker state
   const [mapPin, setMapPin] = useState(null);
@@ -65,6 +67,29 @@ export default function SelectDestination() {
   useEffect(() => {
     api.allStops().then(setAllStops).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (token) {
+      api.tripHistory(token)
+        .then((history) => {
+          const suggestions = analyzeTravelPatterns(history);
+          setAiSuggestions(suggestions);
+        })
+        .catch(() => {});
+    }
+  }, [token]);
+
+  const selectAiSuggestion = (sug) => {
+    setMapCenter([sug.lat, sug.lng]);
+    setMapZoom(14);
+    setMapPin({ lat: sug.lat, lng: sug.lng });
+    setInputLat(sug.lat.toString());
+    setInputLng(sug.lng.toString());
+    setCustomName(sug.name);
+    setSelected(null);
+    setMode("map");
+    setStatusMessage(`Selected AI Learned Suggestion: "${sug.name}" (${sug.timeOfDay})`);
+  };
 
   useEffect(() => {
     if (!query.trim()) {
@@ -274,6 +299,42 @@ export default function SelectDestination() {
             </div>
           </div>
 
+          {/* AI Smart Commute Suggestions Panel */}
+          {aiSuggestions.length > 0 && (
+            <div className="mt-5 rounded-2xl border border-neon-purple/50 bg-night-900/90 p-4 shadow-[0_0_20px_rgba(176,38,255,0.2)]">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-neon-purple flex items-center gap-1.5">
+                  <ZapIcon size={14} className="animate-pulse" /> AI Smart Travel Suggestions
+                </h3>
+                <span className="text-[11px] font-semibold text-night-400">Learned Commute Patterns</span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {aiSuggestions.map((sug, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => selectAiSuggestion(sug)}
+                    className="group rounded-xl border border-night-700 bg-night-950/80 p-3 text-left transition-all hover:border-neon-purple hover:bg-neon-purple/10 hover:shadow-[0_0_15px_rgba(176,38,255,0.3)] active:scale-98"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-md bg-neon-purple/20 px-2 py-0.5 text-[10px] font-bold text-neon-purple truncate">
+                        {sug.tag}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-white group-hover:text-neon-purple transition-colors truncate">
+                      {sug.name}
+                    </p>
+                    <div className="mt-1 flex items-center justify-between text-[10px] text-night-400 font-mono">
+                      <span>{sug.timeOfDay}</span>
+                      <span className="text-neon-cyan">{sug.count} trip{sug.count > 1 ? "s" : ""}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Mode Switcher Tabs */}
           <div className="mt-6 flex rounded-xl bg-night-950/80 p-1.5 border border-night-700">
             <button
@@ -361,8 +422,9 @@ export default function SelectDestination() {
 
               {/* Status Hint */}
               {statusMessage ? (
-                <div className="rounded-xl bg-neon-cyan/15 border border-neon-cyan/40 p-3 text-xs text-neon-cyan font-medium flex items-center justify-between">
-                  <span>📍 {statusMessage}</span>
+                <div className="rounded-xl bg-neon-cyan/15 border border-neon-cyan/40 p-3 text-xs text-neon-cyan font-medium flex items-center gap-2">
+                  <MapPinIcon size={14} className="shrink-0 text-neon-cyan" />
+                  <span>{statusMessage}</span>
                 </div>
               ) : (
                 <p className="text-xs text-neon-cyan font-semibold flex items-center gap-1.5">

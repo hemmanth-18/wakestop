@@ -1,0 +1,90 @@
+{
+  "model_type": "LinearRegression",
+  "dataset_rows": 117,
+  "metrics": {
+    "R2": 0.998460569056458,
+    "MAE_sec": 1.9524558124760334,
+    "RMSE_sec": 2.523176382104808
+  },
+  "feature_names": [
+    "trip_duration_mins",
+    "departure_hour",
+    "historical_avg_latency_sec",
+    "sound_frequency_hz",
+    "vibration_enabled",
+    "prev_snooze_count",
+    "vehicle_speed_kmh"
+  ],
+  "sample_predictions": [
+    {
+      "features": {
+        "trip_duration_mins": 55.0,
+        "departure_hour": 10,
+        "historical_avg_latency_sec": 14.0,
+        "sound_frequency_hz": 650,
+        "vibration_enabled": 1,
+        "prev_snooze_count": 0,
+        "vehicle_speed_kmh": 34.0
+      },
+      "actual_latency_sec": 12.5,
+      "predicted_latency_sec": 10.9,
+      "recommended_alarm_trigger_m": 953
+    },
+    {
+      "features": {
+        "trip_duration_mins": 90.0,
+        "departure_hour": 14,
+        "historical_avg_latency_sec": 120.0,
+        "sound_frequency_hz": 440,
+        "vibration_enabled": 0,
+        "prev_snooze_count": 1,
+        "vehicle_speed_kmh": 50.0
+      },
+      "actual_latency_sec": 135.0,
+      "predicted_latency_sec": 129.1,
+      "recommended_alarm_trigger_m": 3042
+    },
+    {
+      "features": {
+        "trip_duration_mins": 75.0,
+        "departure_hour": 11,
+        "historical_avg_latency_sec": 13.0,
+        "sound_frequency_hz": 880,
+        "vibration_enabled": 1,
+        "prev_snooze_count": 0,
+        "vehicle_speed_kmh": 38.0
+      },
+      "actual_latency_sec": 11.0,
+      "predicted_latency_sec": 11.1,
+      "recommended_alarm_trigger_m": 1066
+    },
+    {
+      "features": {
+        "trip_duration_mins": 320.0,
+        "departure_hour": 1,
+        "historical_avg_latency_sec": 150.0,
+        "sound_frequency_hz": 520,
+        "vibration_enabled": 1,
+        "prev_snooze_count": 2,
+        "vehicle_speed_kmh": 66.0
+      },
+      "actual_latency_sec": 162.0,
+      "predicted_latency_sec": 164.3,
+      "recommended_alarm_trigger_m": 4661
+    },
+    {
+      "features": {
+        "trip_duration_mins": 210.0,
+        "departure_hour": 21,
+        "historical_avg_latency_sec": 18.0,
+        "sound_frequency_hz": 880,
+        "vibration_enabled": 1,
+        "prev_snooze_count": 0,
+        "vehicle_speed_kmh": 55.0
+      },
+      "actual_latency_sec": 20.1,
+      "predicted_latency_sec": 19.9,
+      "recommended_alarm_trigger_m": 1678
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { distanceMetres } from "../utils/geo";
 import { playAlarmSound, getSavedSoundPreset, getVibrationEnabled } from "../utils/audio";
+import { calculateDynamicEta, calculateAdaptiveThresholds } from "../utils/aiEngine";
 
 const DEFAULT_THRESHOLDS = {
   notifyM: 2000,
@@ -27,16 +28,24 @@ function notify(title, body) {
   }
 }
 
-export function useGeoTracking(destination, thresholds = DEFAULT_THRESHOLDS) {
+export function useGeoTracking(destination, customThresholds = null, tripHistory = []) {
   const [position, setPosition] = useState(null);
   const [distance, setDistance] = useState(null);
   const [stage, setStage] = useState("idle");
   const [error, setError] = useState(null);
+  const [positionHistory, setPositionHistory] = useState([]);
+  const [wakeResponseSec, setWakeResponseSec] = useState(null);
+
+  // Compute adaptive thresholds if custom ones aren't provided
+  const adaptiveInfo = useRef(calculateAdaptiveThresholds(tripHistory));
+  const activeThresholds = customThresholds || adaptiveInfo.current.thresholds;
+
   const watchId = useRef(null);
   const repeatTimer = useRef(null);
   const wakeLockRef = useRef(null);
   const lastStage = useRef("idle");
   const manuallyStopped = useRef(false);
+  const alarmStartTime = useRef(null);
 
   const clearRepeatTimer = () => {
     if (repeatTimer.current) {
@@ -49,9 +58,13 @@ export function useGeoTracking(destination, thresholds = DEFAULT_THRESHOLDS) {
     manuallyStopped.current = true;
     setStage("stopped");
     clearRepeatTimer();
+    if (alarmStartTime.current) {
+      const elapsedSec = Math.max(1, Math.round((Date.now() - alarmStartTime.current) / 1000));
+      setWakeResponseSec(elapsedSec);
+    }
   }, []);
 
-  // Screen Wake Lock API to prevent mobile sleep while tracking
+  // Screen Wake Lock API
   useEffect(() => {
     if ("wakeLock" in navigator) {
       navigator.wakeLock
@@ -82,20 +95,29 @@ export function useGeoTracking(destination, thresholds = DEFAULT_THRESHOLDS) {
 
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
+        const point = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          speed: pos.coords.speed,
+          timestamp: pos.timestamp || Date.now(),
+        };
+
         setPosition(pos.coords);
+        setPositionHistory((prev) => [...prev.slice(-25), point]);
+
         const d = distanceMetres(pos.coords.latitude, pos.coords.longitude, destination.lat, destination.lng);
         setDistance(d);
 
         let nextStage = stage;
         if (manuallyStopped.current) {
-          nextStage = d <= thresholds.arrivedM ? "arrived" : "stopped";
-        } else if (d <= thresholds.arrivedM) {
+          nextStage = d <= activeThresholds.arrivedM ? "arrived" : "stopped";
+        } else if (d <= activeThresholds.arrivedM) {
           nextStage = "arrived";
-        } else if (d <= thresholds.criticalM) {
+        } else if (d <= activeThresholds.criticalM) {
           nextStage = "critical";
-        } else if (d <= thresholds.alarmM) {
+        } else if (d <= activeThresholds.alarmM) {
           nextStage = "alarm";
-        } else if (d <= thresholds.notifyM) {
+        } else if (d <= activeThresholds.notifyM) {
           nextStage = "notify";
         } else {
           nextStage = "idle";
@@ -104,15 +126,20 @@ export function useGeoTracking(destination, thresholds = DEFAULT_THRESHOLDS) {
         if (nextStage !== lastStage.current) {
           lastStage.current = nextStage;
           setStage(nextStage);
+
+          if ((nextStage === "alarm" || nextStage === "critical") && !alarmStartTime.current) {
+            alarmStartTime.current = Date.now();
+          }
+
           if (nextStage === "notify") {
-            notify("Getting close", "Your destination is about 2 km away.");
+            notify("Getting close", `Destination is ~${Math.round(d / 1000)} km away.`);
             triggerAudio(nextStage);
           } else if (nextStage === "alarm") {
-            notify("Wake up!", "Your destination is about 1 km away.");
+            notify("Wake up!", "Approaching your stop! Wake up now.");
             triggerAudio(nextStage);
             vibrate([300, 150, 300]);
           } else if (nextStage === "critical") {
-            notify("Almost there!", "Your destination is under 500 m away. Get ready to get off.");
+            notify("Almost there!", "Destination under 500 m away! Prepare to step off.");
             triggerAudio(nextStage);
             vibrate([400, 100, 400, 100, 400]);
             manuallyStopped.current = false;
@@ -122,7 +149,7 @@ export function useGeoTracking(destination, thresholds = DEFAULT_THRESHOLDS) {
               vibrate([400, 100, 400]);
             }, 15000);
           } else if (nextStage === "arrived") {
-            notify("You've arrived", "Journey completed. The alarm has stopped.");
+            notify("You've arrived", "Journey completed. Alarm deactivated.");
             clearRepeatTimer();
           }
         }
@@ -138,5 +165,19 @@ export function useGeoTracking(destination, thresholds = DEFAULT_THRESHOLDS) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [destination?.lat, destination?.lng]);
 
-  return { position, distance, stage, error, acknowledge };
+  const aiEta = calculateDynamicEta(positionHistory, distance);
+
+  return {
+    position,
+    distance,
+    stage,
+    error,
+    acknowledge,
+    positionHistory,
+    aiEta,
+    adaptiveInfo: adaptiveInfo.current,
+    activeThresholds,
+    wakeResponseSec,
+  };
 }
+

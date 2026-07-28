@@ -57,8 +57,8 @@ export const api = {
     payload
   ) => request("/trips/start", { method: "POST", token, body: payload }),
 
-  endTrip: (token, tripId) =>
-    request(`/trips/${tripId}/end`, { method: "POST", token }),
+  endTrip: (token, tripId, wakeResponseSec) =>
+    request(`/trips/${tripId}/end`, { method: "POST", token, body: { wakeResponseSec } }),
 
   tripHistory: (token) => request("/trips/history", { token }),
 };

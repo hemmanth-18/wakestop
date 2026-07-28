@@ -11,7 +11,7 @@ import { fetchOsrmRoute } from "../services/routing";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { SlidersIcon, NavigationIcon, ZapIcon, Volume2Icon, ClockIcon } from "../components/Icons";
-import { getSavedSoundPreset, getVibrationEnabled, SOUND_OPTIONS } from "../utils/audio";
+import { getSavedSoundPreset, getVibrationEnabled, getAllSoundOptions } from "../utils/audio";
 
 // Neon Leaflet SVG Marker Icons (No Emojis)
 const busSvgIcon = new L.DivIcon({
@@ -44,6 +44,7 @@ export default function Tracking() {
   const [trip, setTrip] = useState(location.state?.trip ?? null);
   const [ended, setEnded] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [tripHistory, setTripHistory] = useState([]);
 
   // OSRM Road Route Geometry
   const [roadPolyline, setRoadPolyline] = useState([]);
@@ -53,7 +54,23 @@ export default function Tracking() {
     [trip]
   );
 
-  const { position, distance, stage, error, acknowledge } = useGeoTracking(destination);
+  useEffect(() => {
+    if (token) {
+      api.tripHistory(token).then(setTripHistory).catch(() => {});
+    }
+  }, [token]);
+
+  const {
+    position,
+    distance,
+    stage,
+    error,
+    acknowledge,
+    aiEta,
+    adaptiveInfo,
+    activeThresholds,
+    wakeResponseSec,
+  } = useGeoTracking(destination, null, tripHistory);
 
   useEffect(() => {
     if (!trip && token && id) {
@@ -67,9 +84,9 @@ export default function Tracking() {
   useEffect(() => {
     if (stage === "arrived" && trip && token && !ended) {
       setEnded(true);
-      api.endTrip(token, trip.id).catch(() => {});
+      api.endTrip(token, trip.id, wakeResponseSec).catch(() => {});
     }
-  }, [stage, trip, token, ended]);
+  }, [stage, trip, token, ended, wakeResponseSec]);
 
   // Fetch real OSRM road geometry when GPS position updates
   useEffect(() => {
@@ -106,15 +123,15 @@ export default function Tracking() {
 
   const stageBadge = {
     idle: { label: "Tracking Live", classes: "border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.2)]" },
-    notify: { label: "2 km — Approaching", classes: "border-neon-purple/40 bg-neon-purple/20 text-neon-purple shadow-[0_0_15px_rgba(176,38,255,0.3)]" },
-    alarm: { label: "1 km — Wake Up", classes: "border-neon-gold bg-neon-gold text-night-950 font-bold shadow-[0_0_20px_rgba(255,184,0,0.5)]" },
-    critical: { label: "500 m — CRITICAL", classes: "border-alert-500 bg-alert-500 text-white font-black alarm-shake shadow-[0_0_25px_rgba(255,46,85,0.6)]" },
+    notify: { label: `~${Math.round((activeThresholds?.notifyM || 2000)/1000)} km — Approaching`, classes: "border-neon-purple/40 bg-neon-purple/20 text-neon-purple shadow-[0_0_15px_rgba(176,38,255,0.3)]" },
+    alarm: { label: `~${Math.round((activeThresholds?.alarmM || 1000)/1000)} km — Wake Up`, classes: "border-neon-gold bg-neon-gold text-night-950 font-bold shadow-[0_0_20px_rgba(255,184,0,0.5)]" },
+    critical: { label: `${activeThresholds?.criticalM || 500} m — CRITICAL`, classes: "border-alert-500 bg-alert-500 text-white font-black alarm-shake shadow-[0_0_25px_rgba(255,46,85,0.6)]" },
     arrived: { label: "Arrived", classes: "border-neon-emerald bg-neon-emerald text-night-950 font-bold" },
     stopped: { label: "Snoozed", classes: "border-night-700 bg-night-800 text-night-500" },
   };
   const badge = stageBadge[stage] || stageBadge.idle;
 
-  const currentSoundObj = SOUND_OPTIONS.find((s) => s.id === getSavedSoundPreset());
+  const currentSoundObj = getAllSoundOptions().find((s) => s.id === getSavedSoundPreset());
   const vibrateActive = getVibrationEnabled();
 
   return (
@@ -164,8 +181,39 @@ export default function Tracking() {
           </div>
         )}
 
-        {/* Meters Grid */}
+        {/* AI Adaptive Alarm Calibration Banner */}
+        <div className="glass-panel-gold rounded-2xl p-4 border-neon-purple/40 flex flex-wrap items-center justify-between gap-3 bg-night-900/90 shadow-[0_0_20px_rgba(176,38,255,0.15)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-purple/20 text-neon-purple shadow-[0_0_15px_rgba(176,38,255,0.4)]">
+              <ZapIcon size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-neon-purple">
+                  AI Adaptive Alarm Profile:
+                </span>
+                <span className="rounded-md bg-neon-purple/20 px-2 py-0.5 text-xs font-bold text-white">
+                  {adaptiveInfo.profile}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-night-300">
+                {adaptiveInfo.explanation}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="rounded-lg bg-night-950 px-2.5 py-1 border border-neon-gold/50 text-neon-gold">
+              Alarm: {(activeThresholds.alarmM / 1000).toFixed(1)} km
+            </span>
+            <span className="rounded-lg bg-night-950 px-2.5 py-1 border border-alert-500/50 text-alert-500">
+              Critical: {activeThresholds.criticalM} m
+            </span>
+          </div>
+        </div>
+
+        {/* Meters Grid: Distance, AI Dynamic ETA & Speed Gauge */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* Meter 1: Distance */}
           <div className="glass-panel rounded-2xl p-4 border-neon-cyan/30">
             <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
               <NavigationIcon size={14} className="text-neon-cyan" /> Distance Remaining
@@ -175,24 +223,39 @@ export default function Tracking() {
             </p>
           </div>
 
+          {/* Meter 2: Dynamic AI Arrival ETA */}
           <div className="glass-panel rounded-2xl p-4 border-neon-gold/30">
-            <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
-              <ClockIcon size={14} className="text-neon-gold" /> Estimated Time
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
+                <ClockIcon size={14} className="text-neon-gold" /> AI Dynamic ETA
+              </p>
+              <span className={`text-[10px] font-bold ${aiEta.trafficColor}`}>
+                {aiEta.confidence}
+              </span>
+            </div>
             <p className="mt-2 font-mono text-3xl font-extrabold text-neon-gold neon-text-gold">
-              {distance !== null ? `${estimateEtaMinutes(distance)} min` : "—"}
+              {distance !== null ? `${aiEta.dynamicEtaMin} min` : "—"}
+            </p>
+            <p className={`mt-1 text-[11px] font-medium truncate ${aiEta.trafficColor}`}>
+              {aiEta.trafficStatus}
             </p>
           </div>
 
+          {/* Meter 3: GPS Speed & Audio Ringtone */}
           <div className="glass-panel rounded-2xl p-4 border-neon-purple/30">
-            <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
-              <Volume2Icon size={14} className="text-neon-purple" /> Active Ringtone & Vibrate
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
+                <ZapIcon size={14} className="text-neon-purple" /> Telemetry & Sound
+              </p>
+              <span className="text-[11px] font-mono text-neon-cyan font-bold">
+                {aiEta.speedKmh} km/h
+              </span>
+            </div>
             <p className="mt-2 font-display text-sm font-bold text-white flex items-center gap-2">
               <span>{currentSoundObj?.name || "Cyber Siren"}</span>
               {vibrateActive ? (
                 <span className="flex items-center gap-1 rounded-md bg-neon-cyan/20 px-2 py-0.5 text-xs text-neon-cyan">
-                  <ZapIcon size={12} /> Vibrate ON
+                  Vibrate ON
                 </span>
               ) : (
                 <span className="rounded-md bg-night-800 px-2 py-0.5 text-xs text-night-500">

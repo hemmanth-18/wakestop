@@ -35,7 +35,12 @@ router.post(["/:id/end", "/api/trips/:id/end", "/trips/:id/end"], async (req, re
     if (!trip || trip.userId !== req.userId) {
       return res.status(404).json({ error: "Trip not found" });
     }
-    const updated = await db.trips.update(trip.id, { status: "completed", endTime: new Date().toISOString() });
+    const { wakeResponseSec } = req.body || {};
+    const patch = { status: "completed", endTime: new Date().toISOString() };
+    if (wakeResponseSec != null) {
+      patch.wakeResponseSec = wakeResponseSec;
+    }
+    const updated = await db.trips.update(trip.id, patch);
     res.json(updated);
   } catch (err) {
     console.error("Trip end error:", err);

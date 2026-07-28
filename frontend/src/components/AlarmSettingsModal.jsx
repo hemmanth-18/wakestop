@@ -1,18 +1,26 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
-  SOUND_OPTIONS,
+  getAllSoundOptions,
   getSavedSoundPreset,
   saveSoundPreset,
   getVibrationEnabled,
   saveVibrationEnabled,
   playAlarmSound,
+  stopAlarmSound,
+  saveCustomAlarm,
+  deleteCustomAlarm,
 } from "../utils/audio";
-import { Volume2Icon, ZapIcon, SlidersIcon, CheckIcon } from "./Icons";
+import { Volume2Icon, ZapIcon, SlidersIcon, CheckIcon, PlusIcon, TrashIcon } from "./Icons";
 
 export default function AlarmSettingsModal({ isOpen, onClose }) {
+  const [soundOptions, setSoundOptions] = useState(getAllSoundOptions());
   const [selectedSound, setSelectedSound] = useState(getSavedSoundPreset());
   const [vibrateOn, setVibrateOn] = useState(getVibrationEnabled());
-  const [playingSample, setPlayingSample] = useState(false);
+  const [playingPreset, setPlayingPreset] = useState(null);
+  const [testCountdown, setTestCountdown] = useState(0);
+
+  const fileInputRef = useRef(null);
+  const countdownTimerRef = useRef(null);
 
   if (!isOpen) return null;
 
@@ -31,9 +39,70 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
   };
 
   const handleTestSound = (preset) => {
-    setPlayingSample(true);
-    playAlarmSound(preset, 1);
-    setTimeout(() => setPlayingSample(false), 800);
+    if (playingPreset === preset) {
+      stopAlarmSound();
+      setPlayingPreset(null);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      setTestCountdown(0);
+      return;
+    }
+
+    stopAlarmSound();
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+
+    setPlayingPreset(preset);
+    setTestCountdown(10);
+    playAlarmSound(preset, 1, 10000); // Minimum 10 seconds continuous ringing
+
+    countdownTimerRef.current = setInterval(() => {
+      setTestCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownTimerRef.current);
+          setPlayingPreset(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      alert("Audio file size exceeds 8MB limit. Please choose a smaller audio file.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result;
+      if (dataUrl) {
+        const name = file.name.replace(/\.[^/.]+$/, ""); // strip extension
+        const created = saveCustomAlarm(name, dataUrl);
+        const updated = getAllSoundOptions();
+        setSoundOptions(updated);
+        handleSelectSound(created.id);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDeleteCustom = (id, e) => {
+    e.stopPropagation();
+    deleteCustomAlarm(id);
+    setSoundOptions(getAllSoundOptions());
+    if (selectedSound === id) {
+      setSelectedSound("cyber_siren");
+    }
+  };
+
+  const closeModal = () => {
+    stopAlarmSound();
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    setPlayingPreset(null);
+    onClose();
   };
 
   const supportsVibration = "vibrate" in navigator;
@@ -45,25 +114,53 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
           <div className="flex items-center gap-2.5">
             <SlidersIcon className="text-neon-gold" size={22} />
             <h2 className="font-display text-xl font-bold tracking-tight text-white">
-              Alarm & Vibration Settings
+              Alarm & Ringtone Settings
             </h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={closeModal}
             className="rounded-lg p-1.5 text-night-500 hover:bg-night-800 hover:text-white"
           >
             ✕
           </button>
         </div>
 
+        {/* Badge: Minimum 10 Seconds Ringing */}
+        <div className="mt-4 flex items-center gap-2 rounded-xl bg-neon-gold/15 border border-neon-gold/40 p-2.5 text-xs text-neon-gold font-semibold">
+          <Volume2Icon size={16} className="text-neon-gold shrink-0" />
+          <span>Alarms ring continuously for a minimum of 10 seconds.</span>
+        </div>
+
         {/* Ringtone Sound Selector */}
-        <div className="mt-5">
-          <label className="text-xs font-semibold uppercase tracking-wider text-neon-cyan">
-            Select Ringtone Sound
-          </label>
+        <div className="mt-4">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold uppercase tracking-wider text-neon-cyan">
+              Select Ringtone Sound
+            </label>
+
+            {/* Custom File Upload Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-lg border border-neon-cyan/50 bg-neon-cyan/15 px-2.5 py-1 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/25 transition-all"
+            >
+              <PlusIcon size={14} />
+              Upload Custom Alarm
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+          </div>
+
           <div className="mt-3 space-y-2 max-h-60 overflow-y-auto pr-1">
-            {SOUND_OPTIONS.map((opt) => {
+            {soundOptions.map((opt) => {
               const isSelected = selectedSound === opt.id;
+              const isPlayingThis = playingPreset === opt.id;
+
               return (
                 <div
                   key={opt.id}
@@ -83,21 +180,45 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
                       {isSelected ? <CheckIcon size={18} /> : <Volume2Icon size={18} />}
                     </div>
                     <div>
-                      <p className="font-display text-sm font-semibold text-white">{opt.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-display text-sm font-semibold text-white">{opt.name}</p>
+                        {opt.isCustom && (
+                          <span className="rounded-md bg-neon-purple/20 px-1.5 py-0.5 text-[10px] font-bold text-neon-purple">
+                            Custom Local
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-night-500">{opt.description}</p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTestSound(opt.id);
-                    }}
-                    className="flex items-center gap-1.5 rounded-lg border border-neon-cyan/40 bg-neon-cyan/10 px-2.5 py-1 text-xs font-semibold text-neon-cyan hover:bg-neon-cyan/20 active:scale-95 transition-all"
-                  >
-                    <Volume2Icon size={14} />
-                    {playingSample && selectedSound === opt.id ? "Playing…" : "Test"}
-                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    {opt.isCustom && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteCustom(opt.id, e)}
+                        className="rounded-lg p-1.5 text-alert-500 hover:bg-alert-500/20 transition-colors"
+                        title="Delete Custom Alarm"
+                      >
+                        <TrashIcon size={14} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTestSound(opt.id);
+                      }}
+                      className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
+                        isPlayingThis
+                          ? "border-alert-500 bg-alert-500 text-white animate-pulse"
+                          : "border-neon-cyan/40 bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan/20 active:scale-95"
+                      }`}
+                    >
+                      <Volume2Icon size={14} />
+                      {isPlayingThis ? `Stop (${testCountdown}s)` : "Test (10s)"}
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -105,7 +226,7 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
         </div>
 
         {/* Vibration Switch */}
-        <div className="mt-6 rounded-xl border border-night-700 bg-night-900/80 p-4">
+        <div className="mt-5 rounded-xl border border-night-700 bg-night-900/80 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
@@ -141,7 +262,7 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
         </div>
 
         <button
-          onClick={onClose}
+          onClick={closeModal}
           className="mt-6 w-full rounded-xl bg-neon-gold py-3 font-display font-bold text-night-950 shadow-[0_0_20px_rgba(255,184,0,0.3)] hover:brightness-110 active:scale-98 transition-all"
         >
           Save & Close
