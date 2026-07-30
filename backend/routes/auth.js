@@ -39,10 +39,17 @@ router.post(["/", "/login", "/api/auth/login", "/auth/login"], async (req, res) 
     if (!user) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
-    const match = await bcrypt.compare(password, user.passwordHash);
+
+    const passwordHash = user.passwordHash || user.password_hash;
+    if (!passwordHash) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    const match = await bcrypt.compare(password, passwordHash);
     if (!match) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
+
     const token = jwt.sign({ sub: user.id }, JWT_SECRET, { expiresIn: "30d" });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
   } catch (err) {

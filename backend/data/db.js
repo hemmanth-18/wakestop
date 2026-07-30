@@ -70,20 +70,26 @@ export const db = {
             id: data.id,
             name: data.name,
             email: data.email,
-            passwordHash: data.password_hash,
+            passwordHash: data.password_hash || data.passwordHash,
             createdAt: data.created_at,
           };
         }
         if (!error && !data) {
           const local = localStore.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-          return local || null;
+          if (local) {
+            return {
+              ...local,
+              passwordHash: local.passwordHash || local.password_hash,
+            };
+          }
+          return null;
         }
         console.warn("Supabase findByEmail warning:", error?.message);
       } catch (e) {
         console.warn("Supabase findByEmail exception:", e.message);
       }
       const local = localStore.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-      return local || null;
+      return local ? { ...local, passwordHash: local.passwordHash || local.password_hash } : null;
     },
     findById: async (id) => {
       try {
