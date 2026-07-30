@@ -6,6 +6,7 @@ import { useGeoTracking } from "../hooks/useGeoTracking";
 import AlarmOverlay from "../components/AlarmOverlay";
 import AlarmSettingsModal from "../components/AlarmSettingsModal";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
+import { BatteryRiskCard } from "../components/BatteryRiskCard";
 import { formatDistance, estimateEtaMinutes } from "../utils/geo";
 import { fetchOsrmRoute } from "../services/routing";
 import { api } from "../services/api";
@@ -70,6 +71,9 @@ export default function Tracking() {
     adaptiveInfo,
     activeThresholds,
     wakeResponseSec,
+    batteryRisk,
+    isBatteryCritical,
+    triggerEarlyBatteryAlarm,
   } = useGeoTracking(destination, null, tripHistory);
 
   useEffect(() => {
@@ -143,6 +147,8 @@ export default function Tracking() {
         distance={distance}
         destinationName={trip.destination.name}
         onAcknowledge={acknowledge}
+        isBatteryCritical={isBatteryCritical}
+        batteryRecommendation={batteryRisk?.recommendation}
       />
 
       <AlarmSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
@@ -210,6 +216,12 @@ export default function Tracking() {
             </span>
           </div>
         </div>
+
+        {/* AI Battery Shutdown Risk Guard Card */}
+        <BatteryRiskCard
+          etaMinutes={aiEta?.dynamicEtaMin || 60}
+          onSimulateEarlyAlarm={triggerEarlyBatteryAlarm}
+        />
 
         {/* Meters Grid: Distance, AI Dynamic ETA & Speed Gauge */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

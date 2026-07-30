@@ -8,11 +8,24 @@ const STAGE_COPY = {
   arrived: { title: "You've Arrived!", sub: "Journey completed safely." },
 };
 
-export default function AlarmOverlay({ stage, distance, destinationName, onAcknowledge }) {
+export default function AlarmOverlay({
+  stage,
+  distance,
+  destinationName,
+  onAcknowledge,
+  isBatteryCritical = false,
+  batteryRecommendation = null,
+}) {
   if (stage !== "alarm" && stage !== "critical" && stage !== "arrived") return null;
 
-  const copy = STAGE_COPY[stage];
-  const isCritical = stage === "critical";
+  const copy = isBatteryCritical
+    ? {
+        title: "Battery Critically Low!",
+        sub: "Alarm activated early to avoid missing your stop due to phone shutdown.",
+      }
+    : STAGE_COPY[stage] || STAGE_COPY.alarm;
+
+  const isCritical = stage === "critical" || isBatteryCritical;
   const isArrived = stage === "arrived";
 
   const handleAcknowledgeClick = () => {
@@ -30,6 +43,21 @@ export default function AlarmOverlay({ stage, distance, destinationName, onAckno
           : "bg-neon-gold/95 text-night-950 backdrop-blur-xl"
       }`}
     >
+      {/* Early Battery Alert Banner */}
+      {isBatteryCritical && (
+        <div className="absolute top-6 mx-auto max-w-md rounded-xl bg-night-950/90 border-2 border-alert-400 p-4 text-alert-400 shadow-2xl alarm-shake">
+          <div className="flex items-center justify-center gap-2 font-display text-sm font-bold uppercase tracking-wider">
+            <span>⚡ AI Battery Shutdown Prevention</span>
+          </div>
+          <p className="mt-1 text-xs text-white">
+            Battery critically low. Alarm activated early to avoid missing your stop.
+          </p>
+          <p className="mt-1 font-mono text-[11px] text-neon-gold">
+            🔌 Recommend connecting device to a charger or power bank immediately.
+          </p>
+        </div>
+      )}
+
       <div className="relative mb-8 flex h-32 w-32 items-center justify-center">
         {!isArrived && (
           <span className="pulse-ring absolute inset-0 rounded-full border-4 border-white/80" />
@@ -52,7 +80,7 @@ export default function AlarmOverlay({ stage, distance, destinationName, onAckno
       <h1 className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
         {copy.title}
       </h1>
-      <p className="mt-3 text-lg font-medium opacity-90">{copy.sub}</p>
+      <p className="mt-3 text-lg font-medium opacity-90 max-w-xl">{copy.sub}</p>
 
       <div className="mt-8 rounded-2xl bg-night-950/70 border border-white/20 px-6 py-4 backdrop-blur-md">
         <p className="font-mono text-xs uppercase tracking-widest text-white/60">

@@ -10,12 +10,17 @@ import {
   saveCustomAlarm,
   deleteCustomAlarm,
 } from "../utils/audio";
+import {
+  getBatteryAiEnabled,
+  saveBatteryAiEnabled,
+} from "../utils/batteryPredictor";
 import { Volume2Icon, ZapIcon, SlidersIcon, CheckIcon, PlusIcon, TrashIcon } from "./Icons";
 
 export default function AlarmSettingsModal({ isOpen, onClose }) {
   const [soundOptions, setSoundOptions] = useState(getAllSoundOptions());
   const [selectedSound, setSelectedSound] = useState(getSavedSoundPreset());
   const [vibrateOn, setVibrateOn] = useState(getVibrationEnabled());
+  const [batteryAiOn, setBatteryAiOn] = useState(getBatteryAiEnabled());
   const [playingPreset, setPlayingPreset] = useState(null);
   const [testCountdown, setTestCountdown] = useState(0);
 
@@ -36,6 +41,12 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
     if (next && "vibrate" in navigator) {
       navigator.vibrate([200, 100, 200]);
     }
+  };
+
+  const handleToggleBatteryAi = () => {
+    const next = !batteryAiOn;
+    setBatteryAiOn(next);
+    saveBatteryAiEnabled(next);
   };
 
   const handleTestSound = (preset) => {
@@ -109,12 +120,12 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-night-950/80 p-4 backdrop-blur-md">
-      <div className="glass-panel-gold w-full max-w-md rounded-2xl p-6 shadow-2xl">
+      <div className="glass-panel-gold w-full max-w-md rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-night-700 pb-4">
           <div className="flex items-center gap-2.5">
             <SlidersIcon className="text-neon-gold" size={22} />
             <h2 className="font-display text-xl font-bold tracking-tight text-white">
-              Alarm & Ringtone Settings
+              Alarm & AI Settings
             </h2>
           </div>
           <button
@@ -156,7 +167,7 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
             />
           </div>
 
-          <div className="mt-3 space-y-2 max-h-60 overflow-y-auto pr-1">
+          <div className="mt-3 space-y-2 max-h-52 overflow-y-auto pr-1">
             {soundOptions.map((opt) => {
               const isSelected = selectedSound === opt.id;
               const isPlayingThis = playingPreset === opt.id;
@@ -225,13 +236,49 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
           </div>
         </div>
 
-        {/* Vibration Switch */}
-        <div className="mt-5 rounded-xl border border-night-700 bg-night-900/80 p-4">
+        {/* Battery Prevention AI Toggle */}
+        <div className="mt-4 rounded-xl border border-neon-cyan/30 bg-night-900/80 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
                 className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                  vibrateOn ? "bg-neon-cyan text-night-950 shadow-[0_0_12px_rgba(0,240,255,0.4)]" : "bg-night-800 text-night-500"
+                  batteryAiOn ? "bg-neon-cyan text-night-950 shadow-[0_0_12px_rgba(0,240,255,0.4)]" : "bg-night-800 text-night-500"
+                }`}
+              >
+                <ZapIcon size={20} />
+              </div>
+              <div>
+                <p className="font-display text-sm font-semibold text-white">Battery Prevention AI</p>
+                <p className="text-xs text-night-400">
+                  {batteryAiOn
+                    ? "Triggers early alarm if phone will die before destination"
+                    : "Turned OFF (Only distance alarms will trigger)"}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleToggleBatteryAi}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                batteryAiOn ? "bg-neon-cyan" : "bg-night-700"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-night-950 transition-transform ${
+                  batteryAiOn ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Vibration Switch */}
+        <div className="mt-3 rounded-xl border border-night-700 bg-night-900/80 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                  vibrateOn ? "bg-neon-purple text-white shadow-[0_0_12px_rgba(176,38,255,0.4)]" : "bg-night-800 text-night-500"
                 }`}
               >
                 <ZapIcon size={20} />
@@ -249,7 +296,7 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
             <button
               onClick={handleToggleVibrate}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                vibrateOn ? "bg-neon-cyan" : "bg-night-700"
+                vibrateOn ? "bg-neon-purple" : "bg-night-700"
               }`}
             >
               <span

@@ -374,3 +374,11 @@ export function playAlarmSound(preset = getSavedSoundPreset(), stageMultiplier =
     stopAlarmSound();
   }, minDurationMs);
 }
+
+/**
+ * Triggers maximum intensity alarm tone for critical battery alert.
+ */
+export function playEarlyBatteryAlarm(preset = "laser_alert") {
+  playAlarmSound(preset, 2.0, 15000);
+}
+

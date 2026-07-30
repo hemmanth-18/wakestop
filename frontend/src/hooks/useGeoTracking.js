@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { distanceMetres } from "../utils/geo";
-import { playAlarmSound, getSavedSoundPreset, getVibrationEnabled } from "../utils/audio";
+import { playAlarmSound, playEarlyBatteryAlarm, getSavedSoundPreset, getVibrationEnabled } from "../utils/audio";
 import { calculateDynamicEta, calculateAdaptiveThresholds } from "../utils/aiEngine";
+import { getRealBatteryState, evaluateBatteryRisk } from "../utils/batteryPredictor";
 
 const DEFAULT_THRESHOLDS = {
   notifyM: 2000,
@@ -35,6 +36,8 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
   const [error, setError] = useState(null);
   const [positionHistory, setPositionHistory] = useState([]);
   const [wakeResponseSec, setWakeResponseSec] = useState(null);
+  const [batteryRisk, setBatteryRisk] = useState(null);
+  const [isBatteryCritical, setIsBatteryCritical] = useState(false);
 
   // Compute adaptive thresholds if custom ones aren't provided
   const adaptiveInfo = useRef(calculateAdaptiveThresholds(tripHistory));
@@ -57,11 +60,37 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
   const acknowledge = useCallback(() => {
     manuallyStopped.current = true;
     setStage("stopped");
+    setIsBatteryCritical(false);
     clearRepeatTimer();
     if (alarmStartTime.current) {
       const elapsedSec = Math.max(1, Math.round((Date.now() - alarmStartTime.current) / 1000));
       setWakeResponseSec(elapsedSec);
     }
+  }, []);
+
+  const triggerEarlyBatteryAlarm = useCallback(() => {
+    manuallyStopped.current = false;
+    setIsBatteryCritical(true);
+    setStage("critical");
+    lastStage.current = "critical";
+
+    if (!alarmStartTime.current) {
+      alarmStartTime.current = Date.now();
+    }
+
+    notify(
+      "⚡ Battery Critically Low!",
+      "Alarm activated early by WakeStop AI to prevent missing your stop due to phone shutdown."
+    );
+
+    playEarlyBatteryAlarm(getSavedSoundPreset());
+    vibrate([500, 150, 500, 150, 500]);
+
+    clearRepeatTimer();
+    repeatTimer.current = window.setInterval(() => {
+      playEarlyBatteryAlarm(getSavedSoundPreset());
+      vibrate([500, 150, 500]);
+    }, 12000);
   }, []);
 
   // Screen Wake Lock API
@@ -81,6 +110,24 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
       }
     };
   }, []);
+
+  // Battery monitoring loop during tracking
+  useEffect(() => {
+    const checkBattery = async () => {
+      const bState = await getRealBatteryState();
+      const eta = calculateDynamicEta(positionHistory, distance);
+      const risk = evaluateBatteryRisk(bState, eta.dynamicEtaMin);
+      setBatteryRisk(risk);
+
+      if (risk.triggerEarlyAlarm && !manuallyStopped.current && stage !== "arrived" && stage !== "critical") {
+        triggerEarlyBatteryAlarm();
+      }
+    };
+
+    checkBattery();
+    const timer = setInterval(checkBattery, 8000);
+    return () => clearInterval(timer);
+  }, [positionHistory, distance, stage, triggerEarlyBatteryAlarm]);
 
   useEffect(() => {
     if (!("geolocation" in navigator)) {
@@ -111,6 +158,8 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
         let nextStage = stage;
         if (manuallyStopped.current) {
           nextStage = d <= activeThresholds.arrivedM ? "arrived" : "stopped";
+        } else if (isBatteryCritical) {
+          nextStage = d <= activeThresholds.arrivedM ? "arrived" : "critical";
         } else if (d <= activeThresholds.arrivedM) {
           nextStage = "arrived";
         } else if (d <= activeThresholds.criticalM) {
@@ -163,7 +212,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
       clearRepeatTimer();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destination?.lat, destination?.lng]);
+  }, [destination?.lat, destination?.lng, isBatteryCritical]);
 
   const aiEta = calculateDynamicEta(positionHistory, distance);
 
@@ -178,6 +227,8 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     adaptiveInfo: adaptiveInfo.current,
     activeThresholds,
     wakeResponseSec,
+    batteryRisk,
+    isBatteryCritical,
+    triggerEarlyBatteryAlarm,
   };
 }
-
