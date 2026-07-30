@@ -28,14 +28,18 @@ def train_battery_model():
     df = pd.read_csv(dataset_path)
     print(f"   Dataset loaded successfully with {len(df)} rows and {len(df.columns)} columns.\n")
 
+    # Re-label risk_level based strictly on battery_pct and charging (Safe = 0, Warning = 1, Critical = 2)
+    df["risk_level"] = np.where(
+        df["charging"] == 1, 0,
+        np.where(
+            df["battery_pct"] <= 8, 2,
+            np.where(df["battery_pct"] <= 15, 1, 0)
+        )
+    )
+
     feature_cols = [
         "battery_pct",
-        "drain_rate_pct_min",
-        "screen_on",
-        "gps_active",
-        "charging",
-        "eta_minutes",
-        "historical_drain_rate"
+        "charging"
     ]
     target_col = "risk_level"
 
@@ -44,6 +48,7 @@ def train_battery_model():
 
     # Train / Test Split (80% Train, 20% Test)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
 
     print("🤖 2. Training Candidate Battery Risk Classifier Models...")
     models = {
@@ -119,19 +124,31 @@ def train_battery_model():
         pred_class = int(best_model.predict(sample_x)[0])
         actual_class = int(y_test.iloc[idx])
         
+        row_idx = X_test.index[idx]
         battery_pct = float(sample_x["battery_pct"].values[0])
-        drain_rate = float(sample_x["drain_rate_pct_min"].values[0])
-        eta_mins = float(sample_x["eta_minutes"].values[0])
+        drain_rate = float(df.loc[row_idx, "drain_rate_pct_min"])
+        eta_mins = float(df.loc[row_idx, "eta_minutes"])
         
         est_runtime_mins = round(battery_pct / max(drain_rate, 0.05), 1)
 
+        features_dict = {
+            "battery_pct": battery_pct,
+            "charging": int(sample_x["charging"].values[0]),
+            "drain_rate_pct_min": drain_rate,
+            "eta_minutes": eta_mins,
+            "screen_on": int(df.loc[row_idx, "screen_on"]),
+            "gps_active": int(df.loc[row_idx, "gps_active"]),
+            "historical_drain_rate": float(df.loc[row_idx, "historical_drain_rate"])
+        }
+
         export_payload["sample_evaluations"].append({
-            "features": sample_x.to_dict(orient="records")[0],
+            "features": features_dict,
             "actual_risk": class_map[actual_class],
             "predicted_risk": class_map[pred_class],
             "est_phone_runtime_mins": est_runtime_mins,
             "eta_mins": eta_mins
         })
+
 
     # Save to frontend/src/utils/mlBatteryModel.json
     output_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "src", "utils")

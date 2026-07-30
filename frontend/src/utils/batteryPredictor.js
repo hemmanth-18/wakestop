@@ -134,7 +134,7 @@ export function evaluateBatteryRisk(batteryState, etaMinutes = 60, context = {})
   let riskLevel = "Safe";
   let triggerEarlyAlarm = false;
   let recommendation = "Battery level is healthy. Normal location alert distance will apply.";
-  let explanation = `ML Classifier (${mlBatteryModel.model_name}, Acc: ${(mlBatteryModel.metrics.accuracy * 100).toFixed(1)}%) predicts phone will reach destination safely.`;
+  let explanation = `ML Classifier (${mlBatteryModel.model_name}, Acc: ${(mlBatteryModel.metrics.accuracy * 100).toFixed(1)}%) predicts battery level is safe.`;
 
   if (isCharging) {
     riskLevel = "Safe";
@@ -142,27 +142,20 @@ export function evaluateBatteryRisk(batteryState, etaMinutes = 60, context = {})
     explanation = "Charging active — battery supply sustained.";
   } else {
     // 1. Critical shutdown conditions
-    if (batteryPct <= 8 && etaMinutes >= 15) {
+    if (batteryPct <= 8) {
       riskLevel = "Critical";
       triggerEarlyAlarm = aiEnabled;
       recommendation = aiEnabled
         ? "Connect device to charger or power bank immediately! Early wake-up alarm activated."
         : "Battery critically low. Early alarm paused because Battery AI is turned OFF.";
-      explanation = `Critically low battery (${batteryPct}%) with ${Math.round(etaMinutes)} min ETA. ${aiEnabled ? "Early alarm triggered." : "Early alarm disabled by user."}`;
-    } else if (estPhoneRuntimeMins < etaMinutes - 5) {
-      riskLevel = "Critical";
-      triggerEarlyAlarm = aiEnabled;
-      recommendation = aiEnabled
-        ? "High shutdown probability before destination! Alarm sounding early for safety."
-        : "High shutdown probability predicted, but early alarm is OFF by your preference.";
-      explanation = `Estimated phone runtime (~${estPhoneRuntimeMins} mins) is less than trip ETA (${Math.round(etaMinutes)} mins). ${aiEnabled ? "Early alert activated!" : "Early alarm disabled by user setting."}`;
+      explanation = `Critically low battery (${batteryPct}%). ${aiEnabled ? "Early alarm triggered." : "Early alarm disabled by user."}`;
     } 
     // 2. Warning conditions
-    else if (batteryPct <= 15 || estPhoneRuntimeMins < etaMinutes + 15) {
+    else if (batteryPct <= 15) {
       riskLevel = "Warning";
       triggerEarlyAlarm = false;
-      recommendation = "Battery draining fast. Consider dimming screen or plugging into a power bank.";
-      explanation = `Phone runtime (~${estPhoneRuntimeMins} mins) is tight relative to ${Math.round(etaMinutes)} min ETA. Monitoring continuously.`;
+      recommendation = "Battery is low. Consider dimming screen or plugging into a power bank.";
+      explanation = `Low battery (${batteryPct}%). Monitoring continuously.`;
     }
   }
 

@@ -7,19 +7,14 @@
     "2": "Critical"
   },
   "metrics": {
-    "accuracy": 0.9047619047619048,
-    "precision": 0.9126984126984128,
-    "recall": 0.9047619047619048,
-    "f1_score": 0.9047619047619048
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0
   },
   "feature_importances": {
-    "drain_rate_pct_min": 0.31109122173686865,
-    "battery_pct": 0.309974139150193,
-    "historical_drain_rate": 0.22332270273408256,
-    "eta_minutes": 0.10586241950280623,
-    "screen_on": 0.03913819624561576,
-    "charging": 0.010611320630433829,
-    "gps_active": 0.0
+    "battery_pct": 0.9423748345422711,
+    "charging": 0.05762516545772882
   },
   "critical_thresholds": {
     "critical_battery_pct": 10,
@@ -29,78 +24,78 @@
   "sample_evaluations": [
     {
       "features": {
-        "battery_pct": 11,
-        "drain_rate_pct_min": 1.3,
-        "screen_on": 1,
-        "gps_active": 1,
+        "battery_pct": 9.0,
         "charging": 0,
-        "eta_minutes": 50,
-        "historical_drain_rate": 1.0
+        "drain_rate_pct_min": 0.55,
+        "eta_minutes": 10.0,
+        "screen_on": 0,
+        "gps_active": 1,
+        "historical_drain_rate": 0.55
       },
-      "actual_risk": "Critical",
-      "predicted_risk": "Critical",
-      "est_phone_runtime_mins": 8.5,
-      "eta_mins": 50.0
+      "actual_risk": "Warning",
+      "predicted_risk": "Warning",
+      "est_phone_runtime_mins": 16.4,
+      "eta_mins": 10.0
     },
     {
       "features": {
-        "battery_pct": 100,
-        "drain_rate_pct_min": 0.1,
+        "battery_pct": 14.0,
+        "charging": 0,
+        "drain_rate_pct_min": 0.65,
+        "eta_minutes": 15.0,
+        "screen_on": 0,
+        "gps_active": 1,
+        "historical_drain_rate": 0.65
+      },
+      "actual_risk": "Warning",
+      "predicted_risk": "Warning",
+      "est_phone_runtime_mins": 21.5,
+      "eta_mins": 15.0
+    },
+    {
+      "features": {
+        "battery_pct": 70.0,
+        "charging": 0,
+        "drain_rate_pct_min": 0.4,
+        "eta_minutes": 120.0,
         "screen_on": 1,
         "gps_active": 1,
-        "charging": 1,
-        "eta_minutes": 180,
-        "historical_drain_rate": 0.2
+        "historical_drain_rate": 0.35
       },
       "actual_risk": "Safe",
       "predicted_risk": "Safe",
-      "est_phone_runtime_mins": 1000.0,
-      "eta_mins": 180.0
+      "est_phone_runtime_mins": 175.0,
+      "eta_mins": 120.0
     },
     {
       "features": {
-        "battery_pct": 3,
-        "drain_rate_pct_min": 0.5,
+        "battery_pct": 13.0,
+        "charging": 0,
+        "drain_rate_pct_min": 1.7,
+        "eta_minutes": 80.0,
         "screen_on": 1,
         "gps_active": 1,
-        "charging": 0,
-        "eta_minutes": 25,
-        "historical_drain_rate": 0.5
-      },
-      "actual_risk": "Critical",
-      "predicted_risk": "Critical",
-      "est_phone_runtime_mins": 6.0,
-      "eta_mins": 25.0
-    },
-    {
-      "features": {
-        "battery_pct": 15,
-        "drain_rate_pct_min": 1.2,
-        "screen_on": 1,
-        "gps_active": 1,
-        "charging": 0,
-        "eta_minutes": 35,
-        "historical_drain_rate": 0.8
+        "historical_drain_rate": 1.3
       },
       "actual_risk": "Warning",
       "predicted_risk": "Warning",
-      "est_phone_runtime_mins": 12.5,
-      "eta_mins": 35.0
+      "est_phone_runtime_mins": 7.6,
+      "eta_mins": 80.0
     },
     {
       "features": {
-        "battery_pct": 26,
-        "drain_rate_pct_min": 1.6,
+        "battery_pct": 25.0,
+        "charging": 0,
+        "drain_rate_pct_min": 1.4,
+        "eta_minutes": 75.0,
         "screen_on": 1,
         "gps_active": 1,
-        "charging": 0,
-        "eta_minutes": 68,
-        "historical_drain_rate": 1.1
+        "historical_drain_rate": 1.2
       },
-      "actual_risk": "Warning",
-      "predicted_risk": "Warning",
-      "est_phone_runtime_mins": 16.2,
-      "eta_mins": 68.0
+      "actual_risk": "Safe",
+      "predicted_risk": "Safe",
+      "est_phone_runtime_mins": 17.9,
+      "eta_mins": 75.0
     }
   ]
 }
