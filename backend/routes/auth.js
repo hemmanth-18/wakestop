@@ -28,7 +28,7 @@ router.post(["/", "/register", "/api/auth/register", "/auth/register"], async (r
     res.status(500).json({ error: err.message || "Failed to register user account" });
   }
 });
-
+// hi
 router.post(["/", "/login", "/api/auth/login", "/auth/login"], async (req, res) => {
   try {
     const { email, password } = req.body;
