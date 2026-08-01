@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
 import { ZapIcon, NavigationIcon, BellIcon, ShieldIcon } from "../components/Icons";
+import { LiquidButton } from "../components/LiquidButton";
 
 const HEADLINE_PHRASES = [
   "Never Miss Your Stop.",
@@ -73,13 +74,9 @@ export default function Landing() {
         {/* CTA Buttons — stacked on mobile, side-by-side on sm+ */}
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           {user ? (
-            <Link
-              to="/select-destination"
-              className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-neon-gold px-8 py-4 font-display font-bold text-night-950 shadow-[0_0_25px_rgba(255,184,0,0.4)] hover:brightness-110 active:scale-95 transition-all text-base"
-            >
-              <NavigationIcon size={20} />
+            <LiquidButton to="/select-destination" variant="gold">
               Start New Journey
-            </Link>
+            </LiquidButton>
           ) : (
             <>
               <Link

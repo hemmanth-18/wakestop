@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import CursorGrid from "./CursorGrid";
 
 export default function ThunderNeonCanvas({ isCritical = false }) {
   const canvasRef = useRef(null);
@@ -145,23 +144,9 @@ export default function ThunderNeonCanvas({ isCritical = false }) {
   }, [isCritical]);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-      <CursorGrid
-        cellSize={65}
-        color={isCritical ? "#FF2E55" : "#00F0FF"}
-        radius={160}
-        falloff="smooth"
-        holdTime={400}
-        fadeDuration={750}
-        lineWidth={1.2}
-        maxOpacity={0.85}
-        fillOpacity={0.12}
-        gridOpacity={0.04}
-        cellRadius={6}
-        clickPulse={true}
-        pulseSpeed={650}
-      />
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none fixed inset-0 z-0 h-full w-full opacity-75"
+    />
   );
 }
