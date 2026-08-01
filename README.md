@@ -1,18 +1,19 @@
-# WakeStop
+# WakeStop 🚌
 
-Never miss your bus stop again. WakeStop tracks your live GPS position on long-distance bus
-journeys and wakes you with an escalating alarm as your stop approaches — designed for the
-TNSTC/SETC "I fell asleep on the overnight bus" problem.
+> Never miss your bus stop again.
 
-This repo contains a working full-stack MVP:
+WakeStop tracks your live GPS position on long-distance bus journeys and wakes you with an escalating alarm as your stop approaches — designed for the TNSTC/SETC "I fell asleep on the overnight bus" problem.
 
-- **backend/** — Node.js + Express REST API, JWT auth, file-based JSON storage (swap for
-  MongoDB when you're ready to go further than a demo — see `backend/data/db.js`).
-- **frontend/** — React + Vite + TypeScript + Tailwind CSS v4 + Leaflet/OpenStreetMap.
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=flat-square)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&style=flat-square)
+![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white&style=flat-square)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white&style=flat-square)
+![Vercel](https://img.shields.io/badge/Deployed-Vercel-000000?logo=vercel&logoColor=white&style=flat-square)
 
-A React Native (Expo) mobile shell is a natural next step and can reuse almost everything in
-`frontend/src/hooks`, `frontend/src/services`, and `frontend/src/context` — only the screens
-(UI layer) would need to be rebuilt with native components.
+## Project Structure
+
+- **backend/** — Node.js + Express REST API, JWT auth, Supabase (PostgreSQL) storage
+- **frontend/** — React + Vite + TailwindCSS v4 + Leaflet/OpenStreetMap
 
 ## What's implemented
 
