@@ -145,34 +145,55 @@ export async function requestNotificationPermission() {
   }
 }
 
-/**
- * Send alarm notification via Service Worker.
- * Uses the SYSTEM RINGTONE CHANNEL — rings even when media/music volume is 0.
- */
-function sendSwAlarmNotification(title, body, stage) {
-  if (!("serviceWorker" in navigator)) return;
+// ─── SW Alarm Notification Loop ─────────────────────────────────────────────
+// KEY FIX: fire SW notification repeatedly every 3 seconds.
+// Each notification plays the system notification sound on the NOTIFICATION
+// VOLUME channel — completely separate from media volume.
+// Even with media volume = 0, this keeps ringing until the user dismisses.
 
+let swAlarmIntervalId = null;
+
+function _postToSw(type, payload = {}) {
+  if (!("serviceWorker" in navigator)) return;
   navigator.serviceWorker.ready
     .then((reg) => {
-      if (reg && reg.active) {
-        reg.active.postMessage({ type: "TRIGGER_ALARM_NOTIFICATION", title, body, stage });
-      }
+      if (reg && reg.active) reg.active.postMessage({ type, ...payload });
     })
     .catch(() => {});
 }
 
 /**
- * Dismiss the alarm notification from the notification shade.
+ * Start looping alarm notifications through the Service Worker.
+ * The SW fires showNotification() on each call → system plays notification
+ * sound on NOTIFICATION VOLUME (bypasses media volume entirely).
+ *
+ * @param {string} title
+ * @param {string} body
+ * @param {string} stage  - "alarm" | "critical"
+ * @param {number} intervalMs - how often to re-ring (default 3000ms)
  */
-function dismissSwAlarmNotification() {
-  if (!("serviceWorker" in navigator)) return;
-  navigator.serviceWorker.ready
-    .then((reg) => {
-      if (reg && reg.active) {
-        reg.active.postMessage({ type: "DISMISS_ALARM_NOTIFICATION" });
-      }
-    })
-    .catch(() => {});
+function startSwAlarmLoop(title, body, stage, intervalMs = 3000) {
+  // Stop any previous loop first
+  stopSwAlarmLoop();
+
+  const fire = () => _postToSw("TRIGGER_ALARM_NOTIFICATION", { title, body, stage });
+
+  // Fire immediately
+  fire();
+
+  // Then keep firing every intervalMs — each call re-rings the system sound
+  swAlarmIntervalId = setInterval(fire, intervalMs);
+}
+
+/**
+ * Stop the SW alarm notification loop and dismiss existing notification.
+ */
+function stopSwAlarmLoop() {
+  if (swAlarmIntervalId) {
+    clearInterval(swAlarmIntervalId);
+    swAlarmIntervalId = null;
+  }
+  _postToSw("DISMISS_ALARM_NOTIFICATION");
 }
 
 // ─── Audio Context Unlock (for iOS / Android Chrome) ────────────────────────
@@ -297,7 +318,8 @@ export function stopContinuousVibration() {
 
 export function stopAlarmSound() {
   stopContinuousVibration();
-  dismissSwAlarmNotification();
+  // Stop the repeating SW notification loop
+  stopSwAlarmLoop();
 
   if (currentLoopTimer) {
     clearInterval(currentLoopTimer);
@@ -476,18 +498,20 @@ export function playAlarmSound(
   // ── Layer 1: Persistent Vibration (Mobile haptic + Laptop Gamepad + Screen Rumble) ──
   triggerContinuousVibration();
 
-  // ── Layer 2: Service Worker Notification (SYSTEM RINGTONE CHANNEL) ──────────────────
-  // This fires through the system alarm/ringtone audio stream, bypassing media volume.
-  // It rings even when the phone is on silent (on Android; iOS has limitations).
+  // ── Layer 2: SW Notification Loop (NOTIFICATION VOLUME — bypasses media volume) ──────
+  // We fire a new notification every 3 seconds. Each one plays the system notification
+  // sound through the NOTIFICATION channel, not media. This is how the alarm keeps
+  // ringing even when media/music volume is fully muted — exactly like FindHub / Maps.
   const stage = notifOptions.stage || "alarm";
   const isCritical = stage === "critical";
-  sendSwAlarmNotification(
-    notifOptions.title || (isCritical ? "🚨 Wake Up Now!" : "⏰ WakeStop — Alarm!"),
+  startSwAlarmLoop(
+    notifOptions.title || (isCritical ? "🚨 Wake Up Now! — WakeStop" : "⏰ WakeStop Alarm!"),
     notifOptions.body ||
       (isCritical
         ? "Your destination is immediately approaching! Step off now!"
         : "You're approaching your stop. Wake up and get ready!"),
-    stage
+    stage,
+    3000  // re-ring every 3 seconds on notification volume
   );
 
   // ── Layer 3: Web Audio API (in-app, boosted volume) ─────────────────────────────────
