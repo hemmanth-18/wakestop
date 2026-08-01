@@ -9,16 +9,20 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOCAL_DB_FILE = path.join(__dirname, "local_db.json");
 
-const supabaseUrl = process.env.SUPABASE_URL || "https://iyopwqdzsyqjvpqskpna.supabase.co";
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_08iOI-cbjid0d3kz_pQQOQ_oTPoJblA";
+let supabaseClient = null;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error("❌ SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY) must be configured");
+try {
+  const supabaseUrl = process.env.SUPABASE_URL || "https://yxeqlxbhoedoafbrsufe.supabase.co";
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (supabaseUrl && supabaseKey && typeof supabaseKey === "string" && supabaseKey.length > 20 && !supabaseKey.startsWith("sb_publishable_08")) {
+    supabaseClient = createClient(supabaseUrl, supabaseKey);
+    console.log("⚡ Connected strictly to Supabase Cloud Database");
+  }
+} catch (e) {
+  console.warn("Supabase init warning:", e?.message);
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
-
-console.log("⚡ Connected strictly to Supabase Cloud Database (with local fallback)");
+export const supabase = supabaseClient;
 
 let localStore = {
   users: [],
@@ -44,14 +48,14 @@ try {
     }
   }
 } catch (e) {
-  console.warn("Could not load local_db.json, using default state");
+  // Ignore filesystem read errors (read-only environment on Vercel)
 }
 
 function saveLocalStore() {
   try {
     fs.writeFileSync(LOCAL_DB_FILE, JSON.stringify(localStore, null, 2), "utf-8");
   } catch (e) {
-    // Ignore file system write errors
+    // Ignore read-only file system errors on Vercel
   }
 }
 
@@ -61,65 +65,54 @@ export const db = {
       const targetEmail = (typeof email === "string" ? email : "").trim().toLowerCase();
       if (!targetEmail) return null;
 
-      try {
-        const { data, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("email", targetEmail)
-          .maybeSingle();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("users")
+            .select("*")
+            .eq("email", targetEmail)
+            .maybeSingle();
 
-        if (!error && data) {
-          return {
-            id: data.id,
-            name: data.name,
-            email: data.email,
-            passwordHash: data.password_hash || data.passwordHash,
-            createdAt: data.created_at,
-          };
-        }
-        if (!error && !data) {
-          const local = (localStore.users || []).find((u) => u && typeof u.email === "string" && u.email.toLowerCase() === targetEmail);
-          if (local) {
+          if (!error && data) {
             return {
-              ...local,
-              passwordHash: local.passwordHash || local.password_hash,
+              id: data.id,
+              name: data.name,
+              email: data.email,
+              passwordHash: data.password_hash || data.passwordHash,
+              createdAt: data.created_at,
             };
           }
-          return null;
+        } catch (e) {
+          console.warn("Supabase findByEmail exception:", e?.message);
         }
-        console.warn("Supabase findByEmail warning:", error?.message);
-      } catch (e) {
-        console.warn("Supabase findByEmail exception:", e?.message);
       }
+
       const local = (localStore.users || []).find((u) => u && typeof u.email === "string" && u.email.toLowerCase() === targetEmail);
       return local ? { ...local, passwordHash: local.passwordHash || local.password_hash } : null;
     },
     findById: async (id) => {
-      try {
-        const { data, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", id)
-          .maybeSingle();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", id)
+            .maybeSingle();
 
-        if (!error && data) {
-          return {
-            id: data.id,
-            name: data.name,
-            email: data.email,
-            passwordHash: data.password_hash,
-            createdAt: data.created_at,
-          };
+          if (!error && data) {
+            return {
+              id: data.id,
+              name: data.name,
+              email: data.email,
+              passwordHash: data.password_hash,
+              createdAt: data.created_at,
+            };
+          }
+        } catch (e) {
+          console.warn("Supabase findById exception:", e?.message);
         }
-        if (!error && !data) {
-          const local = localStore.users.find((u) => u.id === id);
-          return local || null;
-        }
-        console.warn("Supabase findById warning:", error?.message);
-      } catch (e) {
-        console.warn("Supabase findById exception:", e.message);
       }
-      const local = localStore.users.find((u) => u.id === id);
+      const local = (localStore.users || []).find((u) => u && u.id === id);
       return local || null;
     },
     insert: async (user) => {
@@ -135,31 +128,32 @@ export const db = {
         saveLocalStore();
       }
 
-      try {
-        const { data, error } = await supabase
-          .from("users")
-          .insert({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            password_hash: user.passwordHash,
-            created_at: user.createdAt,
-          })
-          .select()
-          .single();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("users")
+            .insert({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              password_hash: user.passwordHash,
+              created_at: user.createdAt,
+            })
+            .select()
+            .single();
 
-        if (!error && data) {
-          return {
-            id: data.id,
-            name: data.name,
-            email: data.email,
-            passwordHash: data.password_hash,
-            createdAt: data.created_at,
-          };
+          if (!error && data) {
+            return {
+              id: data.id,
+              name: data.name,
+              email: data.email,
+              passwordHash: data.password_hash,
+              createdAt: data.created_at,
+            };
+          }
+        } catch (e) {
+          console.warn("Supabase insert user exception:", e?.message);
         }
-        console.warn("Supabase insert user warning:", error?.message);
-      } catch (e) {
-        console.warn("Supabase insert user exception:", e.message);
       }
       return localUser;
     },
@@ -167,66 +161,68 @@ export const db = {
 
   trips: {
     findByUser: async (userId) => {
-      try {
-        const { data, error } = await supabase
-          .from("trips")
-          .select("*")
-          .eq("user_id", userId)
-          .order("start_time", { ascending: false });
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("trips")
+            .select("*")
+            .eq("user_id", userId)
+            .order("start_time", { ascending: false });
 
-        if (!error && data) {
-          return data.map((t) => ({
-            id: t.id,
-            userId: t.user_id,
-            start: { name: t.start_name, lat: t.start_lat, lng: t.start_lng },
-            destination: {
-              name: t.destination_name,
-              lat: t.destination_lat,
-              lng: t.destination_lng,
-            },
-            startTime: t.start_time,
-            endTime: t.end_time,
-            status: t.status,
-          }));
+          if (!error && data) {
+            return data.map((t) => ({
+              id: t.id,
+              userId: t.user_id,
+              start: { name: t.start_name, lat: t.start_lat, lng: t.start_lng },
+              destination: {
+                name: t.destination_name,
+                lat: t.destination_lat,
+                lng: t.destination_lng,
+              },
+              startTime: t.start_time,
+              endTime: t.end_time,
+              status: t.status,
+            }));
+          }
+        } catch (e) {
+          console.warn("Supabase findByUser trips exception:", e?.message);
         }
-        console.warn("Supabase findByUser trips warning:", error?.message);
-      } catch (e) {
-        console.warn("Supabase findByUser trips exception:", e.message);
       }
-      return localStore.trips
+      return (localStore.trips || [])
         .filter((t) => t.userId === userId)
         .map((t) => ({ ...t, wakeResponseSec: t.wakeResponseSec }))
         .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
     },
     findById: async (id) => {
-      try {
-        const { data, error } = await supabase
-          .from("trips")
-          .select("*")
-          .eq("id", id)
-          .maybeSingle();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("trips")
+            .select("*")
+            .eq("id", id)
+            .maybeSingle();
 
-        if (!error && data) {
-          return {
-            id: data.id,
-            userId: data.user_id,
-            start: { name: data.start_name, lat: data.start_lat, lng: data.start_lng },
-            destination: {
-              name: data.destination_name,
-              lat: data.destination_lat,
-              lng: data.destination_lng,
-            },
-            startTime: data.start_time,
-            endTime: data.end_time,
-            status: data.status,
-            wakeResponseSec: data.wake_response_sec,
-          };
+          if (!error && data) {
+            return {
+              id: data.id,
+              userId: data.user_id,
+              start: { name: data.start_name, lat: data.start_lat, lng: data.start_lng },
+              destination: {
+                name: data.destination_name,
+                lat: data.destination_lat,
+                lng: data.destination_lng,
+              },
+              startTime: data.start_time,
+              endTime: data.end_time,
+              status: data.status,
+              wakeResponseSec: data.wake_response_sec,
+            };
+          }
+        } catch (e) {
+          console.warn("Supabase findById trip exception:", e?.message);
         }
-        console.warn("Supabase findById trip warning:", error?.message);
-      } catch (e) {
-        console.warn("Supabase findById trip exception:", e.message);
       }
-      return localStore.trips.find((t) => t.id === id) || null;
+      return (localStore.trips || []).find((t) => t.id === id) || null;
     },
     insert: async (trip) => {
       const localTrip = {
@@ -249,44 +245,45 @@ export const db = {
         saveLocalStore();
       }
 
-      try {
-        const { data, error } = await supabase
-          .from("trips")
-          .insert({
-            id: trip.id,
-            user_id: trip.userId,
-            start_name: trip.start?.name,
-            start_lat: trip.start?.lat,
-            start_lng: trip.start?.lng,
-            destination_name: trip.destination.name,
-            destination_lat: trip.destination.lat,
-            destination_lng: trip.destination.lng,
-            start_time: trip.startTime,
-            end_time: trip.endTime,
-            status: trip.status,
-          })
-          .select()
-          .single();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("trips")
+            .insert({
+              id: trip.id,
+              user_id: trip.userId,
+              start_name: trip.start?.name,
+              start_lat: trip.start?.lat,
+              start_lng: trip.start?.lng,
+              destination_name: trip.destination.name,
+              destination_lat: trip.destination.lat,
+              destination_lng: trip.destination.lng,
+              start_time: trip.startTime,
+              end_time: trip.endTime,
+              status: trip.status,
+            })
+            .select()
+            .single();
 
-        if (!error && data) {
-          return {
-            id: data.id,
-            userId: data.user_id,
-            start: { name: data.start_name, lat: data.start_lat, lng: data.start_lng },
-            destination: {
-              name: data.destination_name,
-              lat: data.destination_lat,
-              lng: data.destination_lng,
-            },
-            startTime: data.start_time,
-            endTime: data.end_time,
-            status: data.status,
-            wakeResponseSec: data.wake_response_sec,
-          };
+          if (!error && data) {
+            return {
+              id: data.id,
+              userId: data.user_id,
+              start: { name: data.start_name, lat: data.start_lat, lng: data.start_lng },
+              destination: {
+                name: data.destination_name,
+                lat: data.destination_lat,
+                lng: data.destination_lng,
+              },
+              startTime: data.start_time,
+              endTime: data.end_time,
+              status: data.status,
+              wakeResponseSec: data.wake_response_sec,
+            };
+          }
+        } catch (e) {
+          console.warn("Supabase insert trip exception:", e?.message);
         }
-        console.warn("Supabase insert trip warning:", error?.message);
-      } catch (e) {
-        console.warn("Supabase insert trip exception:", e.message);
       }
       return localTrip;
     },
@@ -299,37 +296,38 @@ export const db = {
         saveLocalStore();
       }
 
-      try {
-        const updateObj = {};
-        if (patch.status !== undefined) updateObj.status = patch.status;
-        if (patch.endTime !== undefined) updateObj.end_time = patch.endTime;
+      if (supabase) {
+        try {
+          const updateObj = {};
+          if (patch.status !== undefined) updateObj.status = patch.status;
+          if (patch.endTime !== undefined) updateObj.end_time = patch.endTime;
 
-        const { data, error } = await supabase
-          .from("trips")
-          .update(updateObj)
-          .eq("id", id)
-          .select()
-          .maybeSingle();
+          const { data, error } = await supabase
+            .from("trips")
+            .update(updateObj)
+            .eq("id", id)
+            .select()
+            .maybeSingle();
 
-        if (!error && data) {
-          return {
-            id: data.id,
-            userId: data.user_id,
-            start: { name: data.start_name, lat: data.start_lat, lng: data.start_lng },
-            destination: {
-              name: data.destination_name,
-              lat: data.destination_lat,
-              lng: data.destination_lng,
-            },
-            startTime: data.start_time,
-            endTime: data.end_time,
-            status: data.status,
-            wakeResponseSec: localStore.trips[idx]?.wakeResponseSec,
-          };
+          if (!error && data) {
+            return {
+              id: data.id,
+              userId: data.user_id,
+              start: { name: data.start_name, lat: data.start_lat, lng: data.start_lng },
+              destination: {
+                name: data.destination_name,
+                lat: data.destination_lat,
+                lng: data.destination_lng,
+              },
+              startTime: data.start_time,
+              endTime: data.end_time,
+              status: data.status,
+              wakeResponseSec: localStore.trips[idx]?.wakeResponseSec,
+            };
+          }
+        } catch (e) {
+          console.warn("Supabase update trip exception:", e?.message);
         }
-        console.warn("Supabase update trip warning:", error?.message);
-      } catch (e) {
-        console.warn("Supabase update trip exception:", e.message);
       }
       return idx !== -1 ? localStore.trips[idx] : null;
     },
@@ -337,30 +335,32 @@ export const db = {
 
   stops: {
     all: async () => {
-      try {
-        const { data, error } = await supabase.from("stops").select("*");
-        if (!error && data && data.length > 0) {
-          return data;
+      if (supabase) {
+        try {
+          const { data, error } = await supabase.from("stops").select("*");
+          if (!error && data && data.length > 0) {
+            return data;
+          }
+        } catch (e) {
+          console.warn("Supabase stops.all exception:", e?.message);
         }
-        console.warn("Supabase stops.all warning:", error?.message);
-      } catch (e) {
-        console.warn("Supabase stops.all exception:", e.message);
       }
       return localStore.stops;
     },
     search: async (q) => {
-      try {
-        const { data, error } = await supabase
-          .from("stops")
-          .select("*")
-          .ilike("name", `%${q || ""}%`);
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("stops")
+            .select("*")
+            .ilike("name", `%${q || ""}%`);
 
-        if (!error && data && data.length > 0) {
-          return data;
+          if (!error && data && data.length > 0) {
+            return data;
+          }
+        } catch (e) {
+          console.warn("Supabase stops.search exception:", e?.message);
         }
-        console.warn("Supabase stops.search warning:", error?.message);
-      } catch (e) {
-        console.warn("Supabase stops.search exception:", e.message);
       }
       const queryStr = (q || "").toLowerCase();
       return localStore.stops.filter((s) => s.name.toLowerCase().includes(queryStr));
@@ -369,6 +369,7 @@ export const db = {
 };
 
 export async function seedStops() {
+  if (!supabase) return;
   try {
     const { count, error } = await supabase
       .from("stops")
@@ -383,6 +384,6 @@ export async function seedStops() {
       }
     }
   } catch (err) {
-    console.warn("Supabase seedStops catch:", err.message);
+    console.warn("Supabase seedStops catch:", err?.message);
   }
 }
