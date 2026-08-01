@@ -238,31 +238,43 @@ let currentTimeoutTimer = null;
 let vibrationIntervalId = null;
 
 /**
- * Laptop & Mobile Vibration Controller
- * - Mobile: Uses persistent repeating navigator.vibrate()
- * - Laptop/PC: Uses Gamepad Dual-Rumble API (if connected) AND triggers Visual Screen Rumble
+ * Mobile & Laptop Vibration Controller
+ *
+ * FIX: Pattern duration MUST equal the setInterval period.
+ * If interval < pattern duration → vibrate() cancels the ongoing
+ * vibration mid-burst → choppy, weak, stuttering effect.
+ *
+ * PATTERN DESIGN:
+ *   [300, 100, 300, 100, 300, 100, 300, 100, 300, 100] = 2000ms exactly
+ *   interval = 2000ms → zero gap, zero overlap → seamless loop.
+ *   Short rapid bursts (300ms) are physically felt STRONGER than
+ *   long continuous rumbles (1000ms) because the motor accelerates
+ *   from 0 each burst, producing peak force.
  */
+
+// Pattern total = 300+100+300+100+300+100+300+100+300+100 = 2000ms
+const VIBRATE_PATTERN      = [300, 100, 300, 100, 300, 100, 300, 100, 300, 100];
+const VIBRATE_INTERVAL_MS  = 2000; // must equal sum of VIBRATE_PATTERN
+
 export function triggerContinuousVibration() {
   if (!getVibrationEnabled()) return;
 
   stopContinuousVibration();
 
-  // 1. Mobile Vibration API Pattern
+  // ── 1. Mobile vibration (navigator.vibrate) ──────────────────────────────
   if ("vibrate" in navigator) {
-    try {
-      navigator.vibrate([1000, 250, 1000, 250, 1000, 250]);
-    } catch (e) {}
+    try { navigator.vibrate(VIBRATE_PATTERN); } catch (e) {}
   }
 
-  // 2. Laptop Gamepad Haptic Rumble API
-  if ("getGamepads" in navigator) {
+  // ── 2. Laptop gamepad haptic rumble ──────────────────────────────────────
+  function rumbleGamepads() {
+    if (!("getGamepads" in navigator)) return;
     try {
-      const gamepads = navigator.getGamepads();
-      for (const gp of gamepads) {
-        if (gp && gp.vibrationActuator) {
+      for (const gp of navigator.getGamepads()) {
+        if (gp?.vibrationActuator) {
           gp.vibrationActuator.playEffect("dual-rumble", {
             startDelay: 0,
-            duration: 1800,
+            duration: VIBRATE_INTERVAL_MS,
             weakMagnitude: 1.0,
             strongMagnitude: 1.0,
           });
@@ -270,35 +282,20 @@ export function triggerContinuousVibration() {
       }
     } catch (e) {}
   }
+  rumbleGamepads();
 
-  // 3. Laptop Screen Vibration Animation
+  // ── 3. Laptop screen shake animation ─────────────────────────────────────
   if (typeof document !== "undefined" && document.body) {
     document.body.classList.add("laptop-vibrate-screen");
   }
 
-  // Repeat vibration continuously
+  // ── 4. Seamless loop — interval == pattern duration, no gaps, no cancels ─
   vibrationIntervalId = setInterval(() => {
     if ("vibrate" in navigator) {
-      try {
-        navigator.vibrate([1000, 250, 1000, 250]);
-      } catch (e) {}
+      try { navigator.vibrate(VIBRATE_PATTERN); } catch (e) {}
     }
-    if ("getGamepads" in navigator) {
-      try {
-        const gamepads = navigator.getGamepads();
-        for (const gp of gamepads) {
-          if (gp && gp.vibrationActuator) {
-            gp.vibrationActuator.playEffect("dual-rumble", {
-              startDelay: 0,
-              duration: 1800,
-              weakMagnitude: 1.0,
-              strongMagnitude: 1.0,
-            });
-          }
-        }
-      } catch (e) {}
-    }
-  }, 1800);
+    rumbleGamepads();
+  }, VIBRATE_INTERVAL_MS);
 }
 
 export function stopContinuousVibration() {

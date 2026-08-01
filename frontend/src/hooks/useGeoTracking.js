@@ -112,12 +112,13 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     );
 
     playEarlyBatteryAlarm(getSavedSoundPreset());
-    vibrate([500, 150, 500, 150, 500]);
+    // Strong rapid-burst pattern — short bursts felt strongest
+    vibrate([300, 80, 300, 80, 300, 80, 300, 80, 300, 80]);
 
     clearRepeatTimer();
     repeatTimer.current = window.setInterval(() => {
       playEarlyBatteryAlarm(getSavedSoundPreset());
-      vibrate([500, 150, 500]);
+      vibrate([300, 80, 300, 80, 300, 80, 300, 80, 300, 80]);
     }, 12000);
   }, []);
 
@@ -231,7 +232,8 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
               title: "⏰ WakeStop — Wake Up!",
               body: "You're approaching your stop! Gather your belongings now.",
             });
-            vibrate([300, 150, 300]);
+            // Firm 3-burst wake-up pattern
+            vibrate([300, 100, 300, 100, 300]);
           } else if (nextStage === "critical") {
             notify(
               "🚨 Almost There! — WakeStop",
@@ -246,7 +248,8 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
               title: "🚨 WakeStop — Get Off Now!",
               body: "Destination under 500 m away! Step off the vehicle immediately!",
             });
-            vibrate([400, 100, 400, 100, 400]);
+            // Rapid aggressive burst — most intense pattern
+            vibrate([300, 80, 300, 80, 300, 80, 300, 80, 300, 80]);
             manuallyStopped.current = false;
             clearRepeatTimer();
             repeatTimer.current = window.setInterval(() => {
@@ -254,7 +257,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
                 title: "🚨 WakeStop — Get Off Now!",
                 body: "Still approaching your stop! You must step off immediately!",
               });
-              vibrate([400, 100, 400]);
+              vibrate([300, 80, 300, 80, 300, 80, 300, 80, 300, 80]);
             }, 15000);
           } else if (nextStage === "arrived") {
             notify(
