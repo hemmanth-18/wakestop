@@ -1,7 +1,50 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
 import { ZapIcon, NavigationIcon, BellIcon, ShieldIcon } from "../components/Icons";
+
+const HEADLINE_PHRASES = [
+  "Never Miss Your Stop.",
+  "Wake Up Right On Time.",
+  "Arrive Safe & Rested.",
+  "Escalating Alarm & Vibrate.",
+];
+
+function TypewriterHeadline() {
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [currentText, setCurrentText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const fullText = HEADLINE_PHRASES[phraseIndex];
+    let timer;
+
+    if (!isDeleting && currentText === fullText) {
+      timer = setTimeout(() => setIsDeleting(true), 2200);
+    } else if (isDeleting && currentText === "") {
+      setIsDeleting(false);
+      setPhraseIndex((prev) => (prev + 1) % HEADLINE_PHRASES.length);
+    } else {
+      const speed = isDeleting ? 35 : 75;
+      timer = setTimeout(() => {
+        const nextText = isDeleting
+          ? fullText.substring(0, currentText.length - 1)
+          : fullText.substring(0, currentText.length + 1);
+        setCurrentText(nextText);
+      }, speed);
+    }
+
+    return () => clearTimeout(timer);
+  }, [currentText, isDeleting, phraseIndex]);
+
+  return (
+    <span className="text-neon-gold neon-text-gold inline-flex items-center">
+      {currentText}
+      <span className="animate-pulse text-neon-cyan font-light ml-0.5">|</span>
+    </span>
+  );
+}
 
 export default function Landing() {
   const { user } = useAuth();
@@ -16,11 +59,10 @@ export default function Landing() {
           <img src="/logo.png" alt="WakeStop" className="h-full w-full rounded-full object-cover scale-[1.38]" />
         </div>
 
-        {/* Headline */}
-        <h1 className="font-display text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
-          Sleep On Long Rides.
-          <br />
-          <span className="text-neon-gold neon-text-gold">Never Miss Your Stop.</span>
+        {/* Headline with Typewriter Effect */}
+        <h1 className="font-display text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight min-h-[120px] sm:min-h-[150px] flex flex-col items-center justify-center">
+          <span>Sleep On Long Rides.</span>
+          <TypewriterHeadline />
         </h1>
 
         <p className="mx-auto mt-5 max-w-xl text-sm sm:text-base text-night-500 leading-relaxed px-2">
