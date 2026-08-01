@@ -483,3 +483,23 @@ export const VibrateIcon = ({ size = 24, className = "", ...props }) => (
     <path d="M20 11v2" />
   </svg>
 );
+
+
+
+export const PauseIcon = ({ size = 24, className = "", ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  </svg>
+);

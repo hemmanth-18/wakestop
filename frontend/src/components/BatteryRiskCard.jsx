@@ -7,7 +7,7 @@ import {
   getBatteryAiEnabled,
   saveBatteryAiEnabled,
 } from "../utils/batteryPredictor";
-import { ZapIcon, SlidersIcon } from "./Icons";
+import { ZapIcon, SlidersIcon, ShieldIcon, PauseIcon, AlertTriangleIcon } from "./Icons";
 
 export function BatteryRiskCard({ etaMinutes = 60, onSimulateEarlyAlarm = null }) {
   const [batteryState, setBatteryState] = useState({
@@ -71,27 +71,27 @@ export function BatteryRiskCard({ etaMinutes = 60, onSimulateEarlyAlarm = null }
       return {
         label: "AI PAUSED",
         badgeClasses: "bg-night-800 text-night-400 border-white/10",
-        icon: "⏸️",
+        icon: <PauseIcon size={14} className="text-night-400" />,
       };
     }
     if (risk.riskLevel === "Critical") {
       return {
         label: "CRITICAL RISK",
         badgeClasses: "bg-alert-500/20 text-alert-500 border-alert-500/50 alarm-shake",
-        icon: "🚨",
+        icon: <ZapIcon size={14} className="text-alert-500" />,
       };
     }
     if (risk.riskLevel === "Warning") {
       return {
         label: "BATTERY WARNING",
         badgeClasses: "bg-neon-gold/20 text-neon-gold border-neon-gold/50",
-        icon: "⚠️",
+        icon: <AlertTriangleIcon size={14} className="text-neon-gold" />,
       };
     }
     return {
       label: "SAFE",
       badgeClasses: "bg-neon-emerald/20 text-neon-emerald border-neon-emerald/50",
-      icon: "🛡️",
+      icon: <ShieldIcon size={14} className="text-neon-emerald" />,
     };
   };
 
@@ -129,13 +129,23 @@ export function BatteryRiskCard({ etaMinutes = 60, onSimulateEarlyAlarm = null }
                 : "bg-night-800 text-night-400 border-white/10 hover:bg-night-700"
             }`}
           >
-            <span>{aiEnabled ? "AI Prevention: ON ⚡" : "AI Prevention: OFF ⏸️"}</span>
+            {aiEnabled ? (
+              <>
+                <ZapIcon size={13} className="text-neon-cyan" />
+                <span>AI Prevention: ON</span>
+              </>
+            ) : (
+              <>
+                <PauseIcon size={13} className="text-night-400" />
+                <span>AI Prevention: OFF</span>
+              </>
+            )}
           </button>
 
           <div
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-mono font-bold tracking-wider ${badge.badgeClasses}`}
           >
-            <span>{badge.icon}</span>
+            {badge.icon}
             <span>{badge.label}</span>
           </div>
         </div>

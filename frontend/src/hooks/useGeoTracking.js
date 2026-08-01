@@ -105,7 +105,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     }
 
     notify(
-      "⚡ Battery Critical — WakeStop!",
+      "Battery Critical — WakeStop!",
       "AI activated early alarm to prevent missing your stop due to phone shutdown.",
       {
         tag: "wakestop-battery-alarm",
@@ -239,7 +239,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
 
           if (nextStage === "notify") {
             notify(
-              "🔔 Getting Close — Yellow Zone (~2 km)",
+              "Getting Close — Yellow Zone (~2 km)",
               `Your destination is ~${Math.round(d / 1000)} km away. Start getting ready!`,
               {
                 tag: "wakestop-notify",
@@ -248,14 +248,14 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
               }
             );
             triggerAudio(nextStage, {
-              title: "🔔 WakeStop — Yellow Zone (~2 km)",
+              title: "WakeStop — Yellow Zone (~2 km)",
               body: `Your destination is ~${Math.round(d / 1000)} km away. Start getting ready!`,
               stage: "notify",
             });
             startAlarmVibration("notify");
           } else if (nextStage === "alarm") {
             notify(
-              "⏰ Wake Up! — WakeStop",
+              "Wake Up! — WakeStop",
               "You're approaching your stop! Gather your belongings now.",
               {
                 tag: "wakestop-alarm-info",
@@ -264,7 +264,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
               }
             );
             triggerAudio(nextStage, {
-              title: "⏰ WakeStop — Wake Up!",
+              title: "WakeStop — Wake Up!",
               body: "You're approaching your stop! Gather your belongings now.",
               stage: "alarm",
             });
@@ -272,7 +272,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
             startAlarmVibration("alarm");
           } else if (nextStage === "critical") {
             notify(
-              "🚨 Almost There! — WakeStop",
+              "Almost There! — WakeStop",
               "Destination under 500 m away! Step off the vehicle now!",
               {
                 tag: "wakestop-alarm-info",
@@ -281,7 +281,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
               }
             );
             triggerAudio(nextStage, {
-              title: "🚨 WakeStop — Get Off Now!",
+              title: "WakeStop — Get Off Now!",
               body: "Destination under 500 m away! Step off the vehicle immediately!",
               stage: "critical",
             });
@@ -291,7 +291,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
             clearRepeatTimer();
             repeatTimer.current = window.setInterval(() => {
               triggerAudio("critical", {
-                title: "🚨 WakeStop — Get Off Now!",
+                title: "WakeStop — Get Off Now!",
                 body: "Still approaching your stop! You must step off immediately!",
                 stage: "critical",
               });
