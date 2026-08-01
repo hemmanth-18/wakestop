@@ -55,8 +55,8 @@ input, select, textarea {
   font-size: 16px !important;
 }
 
-/* Minimum touch target size (44px) for all interactive elements */
-button, a, [role="button"] {
+/* Minimum touch target size (44px) for all interactive elements except toggle switches */
+button:not(.toggle-switch), a, [role="button"]:not(.toggle-switch) {
   min-height: 44px;
   touch-action: manipulation;
 }

@@ -259,7 +259,7 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
 
             <button
               onClick={handleToggleBatteryAi}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              className={`toggle-switch shrink-0 min-h-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 batteryAiOn ? "bg-neon-cyan" : "bg-night-700"
               }`}
             >
@@ -295,7 +295,7 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
 
             <button
               onClick={handleToggleVibrate}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              className={`toggle-switch shrink-0 min-h-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 vibrateOn ? "bg-neon-purple" : "bg-night-700"
               }`}
             >

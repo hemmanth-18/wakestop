@@ -606,15 +606,17 @@ export default function SelectDestination() {
           <button
             disabled={!isReadyToStart || starting}
             onClick={startTrip}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-neon-gold py-4 font-display text-base font-bold text-night-950 shadow-[0_0_25px_rgba(255,184,0,0.4)] transition-all hover:brightness-110 active:scale-98 disabled:opacity-40"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-neon-gold py-4 px-4 text-center font-display text-sm sm:text-base font-bold text-night-950 shadow-[0_0_25px_rgba(255,184,0,0.4)] transition-all hover:brightness-110 active:scale-98 disabled:opacity-40"
           >
             {starting ? (
               "Starting Session…"
             ) : isReadyToStart ? (
-              <>
-                <CheckIcon size={20} />
-                Activate Alarm for {mode === "stops" ? selected?.name : customName || "Selected Pin"}
-              </>
+              <span className="flex items-center justify-center gap-2 text-center w-full min-w-0">
+                <CheckIcon size={20} className="shrink-0" />
+                <span className="truncate">
+                  Activate Alarm for {mode === "stops" ? selected?.name : customName || "Selected Pin"}
+                </span>
+              </span>
             ) : (
               "Select or search a location to continue"
             )}
