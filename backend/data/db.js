@@ -2,12 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
 dotenv.config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const LOCAL_DB_FILE = path.join(__dirname, "local_db.json");
+const LOCAL_DB_FILE = path.join(process.cwd(), "backend", "data", "local_db.json");
 
 let supabaseClient = null;
 
