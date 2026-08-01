@@ -53,7 +53,7 @@ export default function NavBar() {
           <Shuffle
             text="WakeStop"
             tag="span"
-            className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-white neon-text-cyan cursor-pointer"
+            className="font-pixel text-base sm:text-lg font-bold tracking-wider text-white neon-text-cyan cursor-pointer"
             shuffleDirection="right"
             duration={0.35}
             stagger={0.03}
