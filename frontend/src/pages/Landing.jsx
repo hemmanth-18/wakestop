@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
-import { BusIcon, ZapIcon, NavigationIcon, BellIcon, ShieldIcon } from "../components/Icons";
+import { ZapIcon, NavigationIcon, BellIcon, ShieldIcon } from "../components/Icons";
 
 export default function Landing() {
   const { user } = useAuth();
@@ -12,8 +12,8 @@ export default function Landing() {
 
       <div className="relative z-10 mx-auto max-w-3xl">
         {/* Logo icon */}
-        <div className="mx-auto mb-6 flex h-18 w-18 sm:h-20 sm:w-20 items-center justify-center rounded-3xl bg-neon-cyan/20 text-neon-cyan shadow-[0_0_30px_rgba(0,240,255,0.4)] border border-neon-cyan/40">
-          <BusIcon size={36} />
+        <div className="mx-auto mb-6 flex h-18 w-18 sm:h-20 sm:w-20 items-center justify-center rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(0,240,255,0.4)] border border-neon-cyan/40">
+          <img src="/logo.png" alt="WakeStop" className="h-full w-full object-contain" />
         </div>
 
         {/* Headline */}

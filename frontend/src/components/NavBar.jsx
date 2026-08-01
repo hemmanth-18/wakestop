@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { BusIcon, NavigationIcon, HistoryIcon } from "./Icons";
+import { NavigationIcon, HistoryIcon } from "./Icons";
 
 function MenuIcon({ open }) {
   return (
@@ -47,7 +47,7 @@ export default function NavBar() {
         {/* Logo */}
         <Link to="/" onClick={closeMobile} className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neon-cyan/20 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.3)]">
-            <BusIcon size={20} />
+          <img src="/logo.png" alt="WakeStop" className="h-9 w-9 rounded-xl object-contain" />
           </div>
           <span className="font-display text-xl font-extrabold tracking-tight text-white neon-text-cyan">
             WakeStop

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
-import { BusIcon } from "../components/Icons";
 
 export default function Register() {
   const { register } = useAuth();
@@ -34,8 +33,8 @@ export default function Register() {
       <div className="relative z-10 w-full max-w-sm">
         <div className="glass-panel-gold rounded-3xl p-6 sm:p-8 shadow-2xl">
           <div className="mb-6 text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-neon-gold/20 text-neon-gold shadow-[0_0_20px_rgba(255,184,0,0.4)] border border-neon-gold/40">
-              <BusIcon size={28} />
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(255,184,0,0.4)] border border-neon-gold/40">
+              <img src="/logo.png" alt="WakeStop" className="h-full w-full object-contain" />
             </div>
             <h1 className="font-display text-2xl font-extrabold text-white">Create Account</h1>
             <p className="mt-1 text-xs text-night-500">Set live GPS wake alarms for any stop.</p>
