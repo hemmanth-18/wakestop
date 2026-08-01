@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { NavigationIcon, HistoryIcon } from "./Icons";
+import Shuffle from "./Shuffle";
 
 function MenuIcon({ open }) {
   return (
@@ -49,9 +50,16 @@ export default function NavBar() {
           <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.5)] border-2 border-neon-cyan shrink-0 bg-night-950">
             <img src="/logo.png" alt="WakeStop" className="h-full w-full rounded-full object-cover scale-[1.38]" />
           </div>
-          <span className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-white neon-text-cyan">
-            WakeStop
-          </span>
+          <Shuffle
+            text="WakeStop"
+            tag="span"
+            className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-white neon-text-cyan cursor-pointer"
+            shuffleDirection="right"
+            duration={0.35}
+            stagger={0.03}
+            shuffleTimes={2}
+            triggerOnHover={true}
+          />
         </Link>
 
         {/* Desktop nav */}
