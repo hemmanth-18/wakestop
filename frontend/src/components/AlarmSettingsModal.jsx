@@ -14,7 +14,7 @@ import {
   getBatteryAiEnabled,
   saveBatteryAiEnabled,
 } from "../utils/batteryPredictor";
-import { Volume2Icon, ZapIcon, SlidersIcon, CheckIcon, PlusIcon, TrashIcon } from "./Icons";
+import { Volume2Icon, ZapIcon, SlidersIcon, CheckIcon, PlusIcon, TrashIcon, BatteryChargingIcon, VibrateIcon } from "./Icons";
 
 export default function AlarmSettingsModal({ isOpen, onClose }) {
   const [soundOptions, setSoundOptions] = useState(getAllSoundOptions());
@@ -245,7 +245,7 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
                   batteryAiOn ? "bg-neon-cyan text-night-950 shadow-[0_0_12px_rgba(0,240,255,0.4)]" : "bg-night-800 text-night-500"
                 }`}
               >
-                <ZapIcon size={20} />
+                <BatteryChargingIcon size={20} />
               </div>
               <div>
                 <p className="font-display text-sm font-semibold text-white">Battery Prevention AI</p>
@@ -281,7 +281,7 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
                   vibrateOn ? "bg-neon-purple text-white shadow-[0_0_12px_rgba(176,38,255,0.4)]" : "bg-night-800 text-night-500"
                 }`}
               >
-                <ZapIcon size={20} />
+                <VibrateIcon size={20} />
               </div>
               <div>
                 <p className="font-display text-sm font-semibold text-white">Vibration Alarm</p>
