@@ -56,41 +56,41 @@ export default function NavBar() {
 
         {/* Desktop nav */}
         {user ? (
-          <nav className="hidden sm:flex items-center gap-2 text-xs font-semibold">
+          <nav className="hidden sm:flex items-center gap-2.5 text-xs font-bold">
             <Link
               to="/select-destination"
-              className="flex items-center gap-1.5 rounded-xl border border-neon-gold/30 bg-neon-gold/10 px-3.5 py-2 text-neon-gold hover:bg-neon-gold/20 transition-all shadow-[0_0_10px_rgba(255,184,0,0.15)]"
+              className="flex items-center gap-1.5 rounded-xl border border-neon-gold/30 bg-neon-gold/10 px-4 py-2.5 text-neon-gold hover:bg-neon-gold/20 transition-all shadow-[0_0_10px_rgba(255,184,0,0.15)]"
             >
               <NavigationIcon size={14} />
               New Trip
             </Link>
             <Link
               to="/history"
-              className="flex items-center gap-1.5 rounded-xl border border-night-700 bg-night-900/60 px-3.5 py-2 text-night-500 hover:border-neon-cyan hover:text-white transition-all"
+              className="flex items-center gap-1.5 rounded-xl border border-night-700 bg-night-900/60 px-4 py-2.5 text-night-400 hover:border-neon-cyan hover:text-white transition-all"
             >
               <HistoryIcon size={14} />
               History
             </Link>
             <button
               onClick={() => { logout(); nav("/login"); }}
-              className="ml-1 flex items-center gap-1.5 rounded-xl border border-night-700 bg-night-900/60 px-3 py-2 text-night-500 hover:border-alert-500 hover:text-alert-500 transition-all"
+              className="flex items-center gap-1.5 rounded-xl border border-night-700 bg-night-900/60 px-3.5 py-2.5 text-night-400 hover:border-alert-500 hover:text-alert-500 transition-all cursor-pointer"
             >
-              Sign out
+              Sign Out
             </button>
           </nav>
         ) : (
-          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold">
+          <div className="hidden sm:flex items-center gap-3 text-xs font-bold">
             <Link
               to="/login"
-              className="rounded-xl border border-night-700 px-3.5 py-2 text-night-500 hover:text-white transition-all"
+              className="flex items-center justify-center rounded-xl border border-night-700 bg-night-900/60 px-4 py-2.5 text-night-400 hover:border-neon-cyan hover:text-white transition-all"
             >
-              Sign in
+              Sign In
             </Link>
             <Link
               to="/register"
-              className="rounded-xl bg-neon-cyan px-4 py-2 font-bold text-night-950 shadow-[0_0_15px_rgba(0,240,255,0.3)] hover:brightness-110 transition-all"
+              className="flex items-center justify-center rounded-xl bg-neon-cyan px-4.5 py-2.5 font-bold text-night-950 shadow-[0_0_15px_rgba(0,240,255,0.3)] hover:brightness-110 active:scale-95 transition-all"
             >
-              Get Started
+              Get Started Free
             </Link>
           </div>
         )}
