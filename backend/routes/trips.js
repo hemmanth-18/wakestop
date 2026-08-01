@@ -6,30 +6,35 @@ import { requireAuth } from "../middleware/auth.js";
 const router = Router();
 router.use(requireAuth);
 
-router.post(["/", "/start", "/api/trips/start", "/trips/start"], async (req, res) => {
+router.post("/start", async (req, res) => {
   try {
-    const { destinationName, destinationLat, destinationLng, startName, startLat, startLng } = req.body;
-    if (!destinationName || destinationLat == null || destinationLng == null) {
+    const { destinationName, destinationLat, destinationLng, startName, startLat, startLng, destination } = req.body || {};
+    const destName = destinationName || destination?.name;
+    const destLat = destinationLat ?? destination?.lat;
+    const destLng = destinationLng ?? destination?.lng;
+
+    if (!destName || destLat == null || destLng == null) {
       return res.status(400).json({ error: "destinationName, destinationLat and destinationLng are required" });
     }
+
     const trip = {
       id: uuid(),
       userId: req.userId,
-      start: { name: startName || "Current location", lat: startLat ?? null, lng: startLng ?? null },
-      destination: { name: destinationName, lat: destinationLat, lng: destinationLng },
+      start: { name: startName || destination?.startName || "Current location", lat: startLat ?? null, lng: startLng ?? null },
+      destination: { name: destName, lat: destLat, lng: destLng },
       startTime: new Date().toISOString(),
       endTime: null,
       status: "active",
     };
     await db.trips.insert(trip);
-    res.status(201).json(trip);
+    return res.status(201).json(trip);
   } catch (err) {
     console.error("Trip start error:", err);
-    res.status(500).json({ error: err.message || "Could not start trip" });
+    return res.status(500).json({ error: err.message || "Could not start trip" });
   }
 });
 
-router.post(["/:id/end", "/api/trips/:id/end", "/trips/:id/end"], async (req, res) => {
+router.post("/:id/end", async (req, res) => {
   try {
     const trip = await db.trips.findById(req.params.id);
     if (!trip || trip.userId !== req.userId) {
@@ -41,20 +46,20 @@ router.post(["/:id/end", "/api/trips/:id/end", "/trips/:id/end"], async (req, re
       patch.wakeResponseSec = wakeResponseSec;
     }
     const updated = await db.trips.update(trip.id, patch);
-    res.json(updated);
+    return res.json(updated);
   } catch (err) {
     console.error("Trip end error:", err);
-    res.status(500).json({ error: err.message || "Could not end trip" });
+    return res.status(500).json({ error: err.message || "Could not end trip" });
   }
 });
 
-router.get(["/", "/history", "/api/trips/history", "/trips/history"], async (req, res) => {
+router.get("/history", async (req, res) => {
   try {
     const trips = await db.trips.findByUser(req.userId);
-    res.json(trips);
+    return res.json(trips);
   } catch (err) {
     console.error("Trip history error:", err);
-    res.status(500).json({ error: err.message || "Could not fetch trip history" });
+    return res.status(500).json({ error: err.message || "Could not fetch trip history" });
   }
 });
 

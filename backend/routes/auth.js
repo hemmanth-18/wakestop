@@ -7,7 +7,6 @@ import { JWT_SECRET } from "../middleware/auth.js";
 
 const router = Router();
 
-// Registration handler
 const handleRegister = async (req, res) => {
   try {
     const { name, email, password } = req.body || {};
@@ -36,7 +35,6 @@ const handleRegister = async (req, res) => {
   }
 };
 
-// Login handler
 const handleLogin = async (req, res) => {
   try {
     const { email, password } = req.body || {};
@@ -78,11 +76,6 @@ const handleLogin = async (req, res) => {
 };
 
 router.post("/register", handleRegister);
-router.post("/api/auth/register", handleRegister);
-router.post("/auth/register", handleRegister);
-
 router.post("/login", handleLogin);
-router.post("/api/auth/login", handleLogin);
-router.post("/auth/login", handleLogin);
 
 export default router;

@@ -13,7 +13,6 @@ import { seedStops } from "./data/db.js";
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Enable full CORS and preflight handling for mobile devices & Vercel
 app.use(
   cors({
     origin: "*",
@@ -32,21 +31,16 @@ app.options("*", (req, res) => {
 app.use(express.json());
 app.use(morgan("dev"));
 
-// Normalize request URL for Vercel Serverless Function invocations
-app.use((req, res, next) => {
-  const rawUrl = req.originalUrl || req.url || "";
-  if (rawUrl && !rawUrl.includes("/api/index") && !rawUrl.includes("/api/[...path]")) {
-    req.url = rawUrl;
-  }
-  next();
-});
-
-// Match routes with or without /api prefix for Vercel serverless routing
 app.get(["/api/health", "/health"], (req, res) => res.json({ ok: true, service: "wakestop-backend" }));
 
-app.use(authRoutes);
-app.use(tripRoutes);
-app.use(stopRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
+
+app.use("/api/trips", tripRoutes);
+app.use("/trips", tripRoutes);
+
+app.use("/api/stops", stopRoutes);
+app.use("/stops", stopRoutes);
 
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 

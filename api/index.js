@@ -24,9 +24,14 @@ app.get(["/api/health", "/health"], (req, res) =>
   res.json({ ok: true, service: "wakestop-backend" })
 );
 
-app.use(authRoutes);
-app.use(tripRoutes);
-app.use(stopRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
+
+app.use("/api/trips", tripRoutes);
+app.use("/trips", tripRoutes);
+
+app.use("/api/stops", stopRoutes);
+app.use("/stops", stopRoutes);
 
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 
