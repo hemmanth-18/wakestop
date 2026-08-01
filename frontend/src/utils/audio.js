@@ -96,7 +96,121 @@ export function saveVibrationEnabled(enabled) {
   localStorage.setItem("wakestop_vibrate_enabled", String(enabled));
 }
 
+// ─── Service Worker Registration ────────────────────────────────────────────
+
+let swRegistration = null;
+
+/**
+ * Register the WakeStop Service Worker for background alarm notifications.
+ * Call once on app startup (e.g. in main.jsx or App.jsx).
+ */
+export async function registerAlarmServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    swRegistration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+
+    // Listen for messages back from the SW (Acknowledge / Snooze actions)
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if (!event.data) return;
+      if (event.data.type === "ALARM_ACKNOWLEDGED") {
+        stopAlarmSound();
+        // Dispatch a custom DOM event so React components can react
+        window.dispatchEvent(new CustomEvent("wakestop:alarm:acknowledged"));
+      }
+      if (event.data.type === "ALARM_SNOOZED") {
+        stopAlarmSound();
+        window.dispatchEvent(
+          new CustomEvent("wakestop:alarm:snoozed", { detail: { snoozeMs: event.data.snoozeMs } })
+        );
+      }
+    });
+  } catch (e) {
+    console.warn("WakeStop SW registration failed:", e);
+  }
+}
+
+/**
+ * Request notification permission on first user interaction.
+ * Call this after any user gesture (button click, etc.)
+ */
+export async function requestNotificationPermission() {
+  if (!("Notification" in window)) return "denied";
+  if (Notification.permission === "granted") return "granted";
+  if (Notification.permission === "denied") return "denied";
+  try {
+    const result = await Notification.requestPermission();
+    return result;
+  } catch (e) {
+    return "denied";
+  }
+}
+
+/**
+ * Send alarm notification via Service Worker.
+ * Uses the SYSTEM RINGTONE CHANNEL — rings even when media/music volume is 0.
+ */
+function sendSwAlarmNotification(title, body, stage) {
+  if (!("serviceWorker" in navigator)) return;
+
+  navigator.serviceWorker.ready
+    .then((reg) => {
+      if (reg && reg.active) {
+        reg.active.postMessage({ type: "TRIGGER_ALARM_NOTIFICATION", title, body, stage });
+      }
+    })
+    .catch(() => {});
+}
+
+/**
+ * Dismiss the alarm notification from the notification shade.
+ */
+function dismissSwAlarmNotification() {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.ready
+    .then((reg) => {
+      if (reg && reg.active) {
+        reg.active.postMessage({ type: "DISMISS_ALARM_NOTIFICATION" });
+      }
+    })
+    .catch(() => {});
+}
+
+// ─── Audio Context Unlock (for iOS / Android Chrome) ────────────────────────
+
+let audioCtxUnlocked = false;
 let activeAudioCtx = null;
+
+/**
+ * Must be called inside a user gesture (tap/click) to unlock Web Audio on mobile.
+ * Call once in your app's main "Start Tracking" button handler.
+ */
+export function unlockAudioContext() {
+  if (audioCtxUnlocked) return;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    if (!activeAudioCtx || activeAudioCtx.state === "closed") {
+      activeAudioCtx = new AudioContextClass();
+    }
+    // Play a silent buffer to unlock
+    const buffer = activeAudioCtx.createBuffer(1, 1, 22050);
+    const source = activeAudioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(activeAudioCtx.destination);
+    source.start(0);
+    source.onended = () => {
+      audioCtxUnlocked = true;
+    };
+    if (activeAudioCtx.state === "suspended") {
+      activeAudioCtx.resume();
+    }
+  } catch (e) {
+    // Silently fail — Web Audio unlock is best-effort
+  }
+}
+
+// ─── Vibration Controller ────────────────────────────────────────────────────
+
 let currentPlayingAudio = null;
 let currentLoopTimer = null;
 let currentTimeoutTimer = null;
@@ -183,6 +297,7 @@ export function stopContinuousVibration() {
 
 export function stopAlarmSound() {
   stopContinuousVibration();
+  dismissSwAlarmNotification();
 
   if (currentLoopTimer) {
     clearInterval(currentLoopTimer);
@@ -200,6 +315,8 @@ export function stopAlarmSound() {
     currentPlayingAudio = null;
   }
 }
+
+// ─── Web Audio Tone Engine ───────────────────────────────────────────────────
 
 function playSingleToneBurst(preset, stageMultiplier = 1) {
   try {
@@ -332,16 +449,48 @@ function playSingleToneBurst(preset, stageMultiplier = 1) {
   }
 }
 
+// ─── Main Alarm Entry Points ─────────────────────────────────────────────────
+
 /**
- * Plays the alarm preset continuously for at least 10 seconds (or minDurationMs),
- * boosting sound volume and triggering dual mobile + laptop vibration!
+ * Plays the alarm preset continuously for at least 10 seconds (or minDurationMs).
+ *
+ * TWO SIMULTANEOUS CHANNELS:
+ *  1. Web Audio API (in-app audio, boosted with compressor + gain)
+ *  2. Service Worker Notification (system ringtone channel — works even when volume is 0)
+ *
+ * Also triggers dual mobile + laptop vibration.
+ *
+ * @param {string}  preset        - Sound preset ID
+ * @param {number}  stageMultiplier - Frequency multiplier for escalating alarm
+ * @param {number}  minDurationMs  - Minimum alarm duration in milliseconds
+ * @param {object}  notifOptions   - Optional: { title, body, stage } for the SW notification
  */
-export function playAlarmSound(preset = getSavedSoundPreset(), stageMultiplier = 1, minDurationMs = 10000) {
+export function playAlarmSound(
+  preset = getSavedSoundPreset(),
+  stageMultiplier = 1,
+  minDurationMs = 10000,
+  notifOptions = {}
+) {
   stopAlarmSound();
 
-  // Trigger persistent vibration (Mobile haptic + Laptop Gamepad + Laptop Screen Rumble)
+  // ── Layer 1: Persistent Vibration (Mobile haptic + Laptop Gamepad + Screen Rumble) ──
   triggerContinuousVibration();
 
+  // ── Layer 2: Service Worker Notification (SYSTEM RINGTONE CHANNEL) ──────────────────
+  // This fires through the system alarm/ringtone audio stream, bypassing media volume.
+  // It rings even when the phone is on silent (on Android; iOS has limitations).
+  const stage = notifOptions.stage || "alarm";
+  const isCritical = stage === "critical";
+  sendSwAlarmNotification(
+    notifOptions.title || (isCritical ? "🚨 Wake Up Now!" : "⏰ WakeStop — Alarm!"),
+    notifOptions.body ||
+      (isCritical
+        ? "Your destination is immediately approaching! Step off now!"
+        : "You're approaching your stop. Wake up and get ready!"),
+    stage
+  );
+
+  // ── Layer 3: Web Audio API (in-app, boosted volume) ─────────────────────────────────
   const customAlarms = getCustomAlarms();
   const customObj = customAlarms.find((a) => a.id === preset);
 
@@ -378,7 +527,10 @@ export function playAlarmSound(preset = getSavedSoundPreset(), stageMultiplier =
 /**
  * Triggers maximum intensity alarm tone for critical battery alert.
  */
-export function playEarlyBatteryAlarm(preset = "laser_alert") {
-  playAlarmSound(preset, 2.0, 15000);
+export function playEarlyBatteryAlarm(preset = getSavedSoundPreset()) {
+  playAlarmSound(preset, 2.0, 15000, {
+    title: "⚡ Battery Critical — WakeStop Alarm!",
+    body: "Battery critically low! Alarm triggered early to prevent missing your stop.",
+    stage: "critical",
+  });
 }
-

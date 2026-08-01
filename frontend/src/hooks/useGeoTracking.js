@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { distanceMetres } from "../utils/geo";
-import { playAlarmSound, playEarlyBatteryAlarm, getSavedSoundPreset, getVibrationEnabled } from "../utils/audio";
+import {
+  playAlarmSound,
+  playEarlyBatteryAlarm,
+  getSavedSoundPreset,
+  getVibrationEnabled,
+  unlockAudioContext,
+  requestNotificationPermission,
+} from "../utils/audio";
 import { calculateDynamicEta, calculateAdaptiveThresholds } from "../utils/aiEngine";
 import { getRealBatteryState, evaluateBatteryRisk } from "../utils/batteryPredictor";
 
@@ -11,9 +18,9 @@ const DEFAULT_THRESHOLDS = {
   arrivedM: 120,
 };
 
-function triggerAudio(stage) {
+function triggerAudio(stage, notifOptions = {}) {
   const mult = stage === "critical" ? 1.5 : stage === "alarm" ? 1.2 : 1.0;
-  playAlarmSound(getSavedSoundPreset(), mult);
+  playAlarmSound(getSavedSoundPreset(), mult, 10000, { stage, ...notifOptions });
 }
 
 function vibrate(pattern) {
@@ -22,10 +29,26 @@ function vibrate(pattern) {
   }
 }
 
-function notify(title, body) {
+/**
+ * Enhanced notify — uses requireInteraction + vibrate so it behaves
+ * like an alarm notification even when media volume is 0.
+ */
+function notify(title, body, options = {}) {
   if (!("Notification" in window)) return;
-  if (Notification.permission === "granted") {
-    new Notification(title, { body });
+  if (Notification.permission !== "granted") return;
+  try {
+    new Notification(title, {
+      body,
+      icon: "/favicon.svg",
+      requireInteraction: options.requireInteraction ?? false,
+      silent: false,
+      vibrate: options.vibrate ?? [200, 100, 200],
+      tag: options.tag ?? "wakestop-info",
+      renotify: true,
+    });
+  } catch (e) {
+    // Fallback for browsers that don't support all options
+    try { new Notification(title, { body }); } catch (_) {}
   }
 }
 
@@ -79,8 +102,13 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     }
 
     notify(
-      "⚡ Battery Critically Low!",
-      "Alarm activated early by WakeStop AI to prevent missing your stop due to phone shutdown."
+      "⚡ Battery Critical — WakeStop!",
+      "AI activated early alarm to prevent missing your stop due to phone shutdown.",
+      {
+        tag: "wakestop-battery-alarm",
+        requireInteraction: true,
+        vibrate: [800, 100, 800, 100, 800, 100, 800],
+      }
     );
 
     playEarlyBatteryAlarm(getSavedSoundPreset());
@@ -136,9 +164,11 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     }
     if (!destination) return;
 
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
+    // Unlock Web Audio API (required for sound on mobile after user gesture)
+    unlockAudioContext();
+
+    // Request notification permission (needed for SW alarm notifications)
+    requestNotificationPermission();
 
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
@@ -181,24 +211,57 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
           }
 
           if (nextStage === "notify") {
-            notify("Getting close", `Destination is ~${Math.round(d / 1000)} km away.`);
+            notify(
+              "🔔 Getting Close — WakeStop",
+              `Your destination is ~${Math.round(d / 1000)} km away. Start getting ready.`,
+              { tag: "wakestop-notify", vibrate: [150, 100, 150] }
+            );
             triggerAudio(nextStage);
           } else if (nextStage === "alarm") {
-            notify("Wake up!", "Approaching your stop! Wake up now.");
-            triggerAudio(nextStage);
+            notify(
+              "⏰ Wake Up! — WakeStop",
+              "You're approaching your stop! Gather your belongings now.",
+              {
+                tag: "wakestop-alarm-info",
+                requireInteraction: true,
+                vibrate: [500, 150, 500, 150, 500],
+              }
+            );
+            triggerAudio(nextStage, {
+              title: "⏰ WakeStop — Wake Up!",
+              body: "You're approaching your stop! Gather your belongings now.",
+            });
             vibrate([300, 150, 300]);
           } else if (nextStage === "critical") {
-            notify("Almost there!", "Destination under 500 m away! Prepare to step off.");
-            triggerAudio(nextStage);
+            notify(
+              "🚨 Almost There! — WakeStop",
+              "Destination under 500 m away! Step off the vehicle now!",
+              {
+                tag: "wakestop-alarm-info",
+                requireInteraction: true,
+                vibrate: [800, 100, 800, 100, 800, 100, 800],
+              }
+            );
+            triggerAudio(nextStage, {
+              title: "🚨 WakeStop — Get Off Now!",
+              body: "Destination under 500 m away! Step off the vehicle immediately!",
+            });
             vibrate([400, 100, 400, 100, 400]);
             manuallyStopped.current = false;
             clearRepeatTimer();
             repeatTimer.current = window.setInterval(() => {
-              triggerAudio("critical");
+              triggerAudio("critical", {
+                title: "🚨 WakeStop — Get Off Now!",
+                body: "Still approaching your stop! You must step off immediately!",
+              });
               vibrate([400, 100, 400]);
             }, 15000);
           } else if (nextStage === "arrived") {
-            notify("You've arrived", "Journey completed. Alarm deactivated.");
+            notify(
+              "✅ You've Arrived — WakeStop",
+              "Journey completed safely. Alarm deactivated.",
+              { tag: "wakestop-arrived", vibrate: [200] }
+            );
             clearRepeatTimer();
           }
         }
