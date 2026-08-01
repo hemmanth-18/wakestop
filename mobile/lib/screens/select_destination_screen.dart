@@ -18,16 +18,44 @@ class _SelectDestinationScreenState extends State<SelectDestinationScreen> {
   bool _isSearching = false;
   bool _isStarting = false;
 
+  static const List<Map<String, dynamic>> _popularStops = [
+    {'name': 'Salem New Bus Stand', 'lat': 11.6643, 'lng': 78.1460},
+    {'name': 'Chennai Koyambedu (CMBT)', 'lat': 13.0694, 'lng': 80.1948},
+    {'name': 'Madurai Mattuthavani BS', 'lat': 9.9391, 'lng': 78.1578},
+    {'name': 'Coimbatore Gandhipuram BS', 'lat': 11.0168, 'lng': 76.9655},
+    {'name': 'Trichy Central Bus Stand', 'lat': 10.7905, 'lng': 78.6824},
+    {'name': 'Bengaluru Majestic (KSRTC)', 'lat': 12.9780, 'lng': 77.5700},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _searchResults = List.from(_popularStops);
+  }
+
   void _onSearchChanged(String query) async {
     if (query.trim().isEmpty) {
-      setState(() => _searchResults = []);
+      setState(() => _searchResults = List.from(_popularStops));
       return;
     }
     setState(() => _isSearching = true);
     try {
       final results = await ApiService.searchStops(query);
-      setState(() => _searchResults = results);
+      if (results.isNotEmpty) {
+        setState(() => _searchResults = results);
+      } else {
+        setState(() {
+          _searchResults = _popularStops
+              .where((s) => s['name'].toString().toLowerCase().contains(query.toLowerCase()))
+              .toList();
+        });
+      }
     } catch (e) {
+      setState(() {
+        _searchResults = _popularStops
+            .where((s) => s['name'].toString().toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      });
     } finally {
       setState(() => _isSearching = false);
     }
