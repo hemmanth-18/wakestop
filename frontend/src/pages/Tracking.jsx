@@ -11,7 +11,7 @@ import { formatDistance } from "../utils/geo";
 import { fetchOsrmRoute } from "../services/routing";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { SlidersIcon, NavigationIcon, ZapIcon, ClockIcon } from "../components/Icons";
+import { SlidersIcon, NavigationIcon, ZapIcon, ClockIcon, BellIcon } from "../components/Icons";
 import { getSavedSoundPreset, getVibrationEnabled, getAllSoundOptions } from "../utils/audio";
 
 // Neon Leaflet SVG Marker Icons
@@ -168,6 +168,17 @@ export default function Tracking() {
               {badge.label}
             </span>
           </div>
+
+          {/* Prominent Stop Alarm Button when alarm/chime is active */}
+          {(stage === "notify" || stage === "alarm" || stage === "critical" || stage === "arrived") && (
+            <button
+              onClick={acknowledge}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-alert-500 py-3.5 text-sm sm:text-base font-extrabold text-white shadow-[0_0_25px_rgba(255,46,85,0.6)] alarm-shake active:scale-95 transition-all hover:bg-alert-600 cursor-pointer"
+            >
+              <BellIcon size={20} />
+              <span>🛑 STOP ALARM &amp; MUTE SOUND</span>
+            </button>
+          )}
 
           {/* Settings button — full-width on mobile */}
           <button

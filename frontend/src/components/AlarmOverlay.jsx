@@ -3,6 +3,7 @@ import { CheckIcon, ZapIcon, BellIcon } from "./Icons";
 import { stopAlarmSound } from "../utils/audio";
 
 const STAGE_COPY = {
+  notify: { title: "Nearing Stop (~2 km)!", sub: "Yellow Zone — Start getting ready." },
   alarm: { title: "Getting close!", sub: "Start gathering your belongings." },
   critical: { title: "Wake Up Now!", sub: "Your destination is immediately approaching." },
   arrived: { title: "You've Arrived!", sub: "Journey completed safely." },
@@ -16,7 +17,7 @@ export default function AlarmOverlay({
   isBatteryCritical = false,
   batteryRecommendation = null,
 }) {
-  if (stage !== "alarm" && stage !== "critical" && stage !== "arrived") return null;
+  if (stage !== "notify" && stage !== "alarm" && stage !== "critical" && stage !== "arrived") return null;
 
   const copy = isBatteryCritical
     ? {
@@ -99,7 +100,7 @@ export default function AlarmOverlay({
         className="mt-8 flex items-center justify-center gap-2.5 rounded-2xl bg-night-950 px-8 py-4 sm:px-10 sm:py-5 font-display text-lg sm:text-xl font-bold text-white shadow-[0_0_30px_rgba(0,0,0,0.6)] active:scale-95 transition-all hover:scale-105"
       >
         <CheckIcon size={24} className={isArrived ? "text-neon-emerald" : "text-neon-gold"} />
-        {isArrived ? "Stop Alarm & Complete Trip" : "I've Woken Up"}
+        {isArrived ? "Stop Alarm & Complete Trip" : "Stop Alarm & Mute Sound"}
       </button>
     </div>
   );
