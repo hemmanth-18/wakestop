@@ -43,13 +43,13 @@ export default function NavBar() {
   return (
     <header className="sticky top-0 z-40 border-b border-neon-cyan/20 bg-night-950/90 backdrop-blur-xl">
       {/* ── Main bar ── */}
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+      <div className="flex w-full items-center justify-between px-4 sm:px-8 py-2.5">
         {/* Logo */}
-        <Link to="/" onClick={closeMobile} className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neon-cyan/20 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.3)]">
-          <img src="/logo.png" alt="WakeStop" className="h-9 w-9 rounded-xl object-contain" />
+        <Link to="/" onClick={closeMobile} className="flex items-center gap-3">
+          <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-neon-cyan/15 p-1 shadow-[0_0_20px_rgba(0,240,255,0.35)] border border-neon-cyan/40">
+            <img src="/logo.png" alt="WakeStop" className="h-full w-full rounded-xl object-contain" />
           </div>
-          <span className="font-display text-xl font-extrabold tracking-tight text-white neon-text-cyan">
+          <span className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-white neon-text-cyan">
             WakeStop
           </span>
         </Link>
