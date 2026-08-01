@@ -58,11 +58,14 @@ function saveLocalStore() {
 export const db = {
   users: {
     findByEmail: async (email) => {
+      const targetEmail = (typeof email === "string" ? email : "").trim().toLowerCase();
+      if (!targetEmail) return null;
+
       try {
         const { data, error } = await supabase
           .from("users")
           .select("*")
-          .eq("email", email)
+          .eq("email", targetEmail)
           .maybeSingle();
 
         if (!error && data) {
@@ -75,7 +78,7 @@ export const db = {
           };
         }
         if (!error && !data) {
-          const local = localStore.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+          const local = (localStore.users || []).find((u) => u && typeof u.email === "string" && u.email.toLowerCase() === targetEmail);
           if (local) {
             return {
               ...local,
@@ -86,9 +89,9 @@ export const db = {
         }
         console.warn("Supabase findByEmail warning:", error?.message);
       } catch (e) {
-        console.warn("Supabase findByEmail exception:", e.message);
+        console.warn("Supabase findByEmail exception:", e?.message);
       }
-      const local = localStore.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      const local = (localStore.users || []).find((u) => u && typeof u.email === "string" && u.email.toLowerCase() === targetEmail);
       return local ? { ...local, passwordHash: local.passwordHash || local.password_hash } : null;
     },
     findById: async (id) => {
