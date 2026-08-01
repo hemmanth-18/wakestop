@@ -248,11 +248,11 @@ export default function AlarmSettingsModal({ isOpen, onClose }) {
                 <BatteryChargingIcon size={20} />
               </div>
               <div>
-                <p className="font-display text-sm font-semibold text-white">Battery Prevention AI</p>
+                <p className="font-display text-sm font-semibold text-white">Battery AI</p>
                 <p className="text-xs text-night-400">
                   {batteryAiOn
-                    ? "Triggers early alarm if phone will die before destination"
-                    : "Turned OFF (Only distance alarms will trigger)"}
+                    ? "Early alarm on low battery"
+                    : "Disabled"}
                 </p>
               </div>
             </div>

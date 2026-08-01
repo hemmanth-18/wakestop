@@ -457,9 +457,9 @@ export const BatteryChargingIcon = ({ size = 24, className = "", ...props }) => 
     className={className}
     {...props}
   >
-    <rect width="16" height="10" x="2" y="7" rx="2" ry="2" />
-    <line x1="22" x2="22" y1="11" y2="13" />
-    <polyline points="11 9 8 13 13 13 10 17" />
+    <path d="M3 9h13a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z" />
+    <path d="M17 11h1a1 1 0 0 1 1 1v.5a1 1 0 0 1-1 1h-1" />
+    <path d="M10 9 8 12h4l-2 3" />
   </svg>
 );
 
