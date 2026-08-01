@@ -125,20 +125,43 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     }, 12000);
   }, []);
 
-  // Screen Wake Lock API
+  // Screen Wake Lock API — Persistent auto-reacquire loop for sleeping users
   useEffect(() => {
-    if ("wakeLock" in navigator) {
-      navigator.wakeLock
-        .request("screen")
-        .then((lock) => {
-          wakeLockRef.current = lock;
-        })
-        .catch(() => {});
+    let isMounted = true;
+
+    async function requestLock() {
+      if ("wakeLock" in navigator && !wakeLockRef.current) {
+        try {
+          const lock = await navigator.wakeLock.request("screen");
+          if (isMounted) {
+            wakeLockRef.current = lock;
+            lock.addEventListener("release", () => {
+              wakeLockRef.current = null;
+              if (isMounted && lastStage.current !== "stopped" && lastStage.current !== "arrived") {
+                setTimeout(requestLock, 1000);
+              }
+            });
+          }
+        } catch (e) {}
+      }
     }
 
+    requestLock();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        requestLock();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
+      isMounted = false;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (wakeLockRef.current) {
         wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
       }
     };
   }, []);
@@ -216,11 +239,20 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
 
           if (nextStage === "notify") {
             notify(
-              "🔔 Getting Close — WakeStop",
-              `Your destination is ~${Math.round(d / 1000)} km away. Start getting ready.`,
-              { tag: "wakestop-notify", vibrate: [150, 100, 150] }
+              "🔔 Getting Close — Yellow Zone (~2 km)",
+              `Your destination is ~${Math.round(d / 1000)} km away. Start getting ready!`,
+              {
+                tag: "wakestop-notify",
+                requireInteraction: true,
+                vibrate: [300, 150, 300],
+              }
             );
-            triggerAudio(nextStage);
+            triggerAudio(nextStage, {
+              title: "🔔 WakeStop — Yellow Zone (~2 km)",
+              body: `Your destination is ~${Math.round(d / 1000)} km away. Start getting ready!`,
+              stage: "notify",
+            });
+            startAlarmVibration("notify");
           } else if (nextStage === "alarm") {
             notify(
               "⏰ Wake Up! — WakeStop",
@@ -234,6 +266,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
             triggerAudio(nextStage, {
               title: "⏰ WakeStop — Wake Up!",
               body: "You're approaching your stop! Gather your belongings now.",
+              stage: "alarm",
             });
             // Start vibration independently — NOT tied to audio
             startAlarmVibration("alarm");
@@ -250,6 +283,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
             triggerAudio(nextStage, {
               title: "🚨 WakeStop — Get Off Now!",
               body: "Destination under 500 m away! Step off the vehicle immediately!",
+              stage: "critical",
             });
             // Critical intensity vibration — independent from audio
             startAlarmVibration("critical");
@@ -259,16 +293,26 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
               triggerAudio("critical", {
                 title: "🚨 WakeStop — Get Off Now!",
                 body: "Still approaching your stop! You must step off immediately!",
+                stage: "critical",
               });
               startAlarmVibration("critical"); // keep vibration alive on each repeat
             }, 15000);
           } else if (nextStage === "arrived") {
             notify(
               "✅ You've Arrived — WakeStop",
-              "Journey completed safely. Alarm deactivated.",
-              { tag: "wakestop-arrived", vibrate: [200] }
+              "Journey completed safely. Welcome to your destination!",
+              {
+                tag: "wakestop-arrived",
+                requireInteraction: true,
+                vibrate: [400, 100, 400, 100, 400],
+              }
             );
-            stopAlarmVibration(); // stop vibration on arrival
+            triggerAudio("arrived", {
+              title: "✅ WakeStop — You've Arrived!",
+              body: "Journey completed safely. Welcome to your destination!",
+              stage: "arrived",
+            });
+            startAlarmVibration("arrived");
             clearRepeatTimer();
           }
         }

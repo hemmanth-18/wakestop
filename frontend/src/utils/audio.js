@@ -246,8 +246,10 @@ export function unlockAudioContext() {
 //   "critical" intensity → [200, 30] × 6 = 230ms cycle, even more aggressive
 
 const VIBRATE_PATTERNS = {
+  notify:   { pattern: [300, 150, 300], intervalMs: 1000 },
   alarm:    { pattern: [200, 50, 200, 50, 200, 50, 200, 50, 200, 50],  intervalMs: 1250 },
   critical: { pattern: [200, 30, 200, 30, 200, 30, 200, 30, 200, 30, 200, 30], intervalMs: 1380 },
+  arrived:  { pattern: [400, 100, 400, 100, 400], intervalMs: 1200 },
 };
 
 let vibrationIntervalId = null;
@@ -471,6 +473,44 @@ function playSingleToneBurst(preset, stageMultiplier = 1) {
 
       chimeOsc.start(now + 0.1);
       chimeOsc.stop(now + 0.55);
+    } else if (stage === "notify") {
+      // Yellow Zone Chime — Two-tone soft alert (C5 -> G5)
+      const freqs = [523.25, 783.99];
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(compressor);
+
+        const startTime = now + idx * 0.2;
+        gain.gain.setValueAtTime(0.001, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.4, startTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+
+        osc.start(startTime);
+        osc.stop(startTime + 0.4);
+      });
+    } else if (stage === "arrived") {
+      // Arrival Victory Chime — Four-tone ascending chord (C5 -> E5 -> G5 -> C6)
+      const freqs = [523.25, 659.25, 783.99, 1046.5];
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(compressor);
+
+        const startTime = now + idx * 0.15;
+        gain.gain.setValueAtTime(0.001, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.5, startTime + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
+
+        osc.start(startTime);
+        osc.stop(startTime + 0.55);
+      });
     }
   } catch (e) {
     console.warn("Web Audio tone play error:", e);
@@ -501,23 +541,27 @@ export function playAlarmSound(
 ) {
   stopAlarmSound();
 
-  // ── NOTE: Vibration is NOT started here anymore ───────────────────────────────────────
-  // Vibration is now a fully independent system. Call startAlarmVibration()
-  // separately from useGeoTracking.js so it is NOT tied to audio timing.
-  // ── Layer 2: SW Notification Loop (NOTIFICATION VOLUME — bypasses media volume) ──────
-  // We fire a new notification every 3 seconds. Each one plays the system notification
-  // sound through the NOTIFICATION channel, not media. This is how the alarm keeps
-  // ringing even when media/music volume is fully muted — exactly like FindHub / Maps.
   const stage = notifOptions.stage || "alarm";
   const isCritical = stage === "critical";
+
+  let defaultTitle = "⏰ WakeStop Alarm!";
+  let defaultBody = "You're approaching your stop. Wake up and get ready!";
+  if (stage === "notify") {
+    defaultTitle = "🔔 WakeStop — Yellow Zone!";
+    defaultBody = "Nearing destination (~2 km away). Start getting ready!";
+  } else if (stage === "arrived") {
+    defaultTitle = "✅ WakeStop — You've Arrived!";
+    defaultBody = "Journey completed safely. Welcome to your destination!";
+  } else if (isCritical) {
+    defaultTitle = "🚨 Wake Up Now! — WakeStop";
+    defaultBody = "Your destination is immediately approaching! Step off now!";
+  }
+
   startSwAlarmLoop(
-    notifOptions.title || (isCritical ? "🚨 Wake Up Now! — WakeStop" : "⏰ WakeStop Alarm!"),
-    notifOptions.body ||
-      (isCritical
-        ? "Your destination is immediately approaching! Step off now!"
-        : "You're approaching your stop. Wake up and get ready!"),
+    notifOptions.title || defaultTitle,
+    notifOptions.body || defaultBody,
     stage,
-    3000  // re-ring every 3 seconds on notification volume
+    stage === "notify" || stage === "arrived" ? 5000 : 3000
   );
 
   // ── Layer 3: Web Audio API (in-app, boosted volume) ─────────────────────────────────
