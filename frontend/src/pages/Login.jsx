@@ -32,8 +32,8 @@ export default function Login() {
       <div className="relative z-10 w-full max-w-sm">
         <div className="glass-panel-gold rounded-3xl p-6 sm:p-8 shadow-2xl">
           <div className="mb-6 text-center">
-            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full overflow-hidden bg-night-950 p-0.5 shadow-[0_0_20px_rgba(0,240,255,0.5)] border-2 border-neon-cyan">
-              <img src="/logo.png" alt="WakeStop" className="h-full w-full rounded-full object-cover" />
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.6)] border-2 border-neon-cyan shrink-0">
+              <img src="/logo.png" alt="WakeStop" className="h-full w-full rounded-full object-cover scale-[1.05]" />
             </div>
             <h1 className="font-display text-2xl font-extrabold text-white">Welcome Back</h1>
             <p className="mt-1 text-xs text-night-500">Sign in to resume tracking & alarms.</p>

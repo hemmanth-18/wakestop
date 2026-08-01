@@ -11,9 +11,9 @@ export default function Landing() {
       <ThunderNeonCanvas />
 
       <div className="relative z-10 mx-auto max-w-3xl">
-        {/* Circular Logo Emblem with Glowing Neon Border */}
-        <div className="mx-auto mb-6 flex h-36 w-36 sm:h-44 sm:w-44 items-center justify-center rounded-full overflow-hidden bg-night-950 p-1 shadow-[0_0_50px_rgba(0,240,255,0.6)] border-2 border-neon-cyan ring-4 ring-neon-cyan/20">
-          <img src="/logo.png" alt="WakeStop" className="h-full w-full rounded-full object-cover" />
+        {/* Circular Logo Emblem perfectly fitted to glowing border */}
+        <div className="mx-auto mb-6 flex h-36 w-36 sm:h-48 sm:w-48 items-center justify-center rounded-full overflow-hidden shadow-[0_0_50px_rgba(0,240,255,0.8)] border-3 border-neon-cyan">
+          <img src="/logo.png" alt="WakeStop" className="h-full w-full rounded-full object-cover scale-[1.05]" />
         </div>
 
         {/* Headline */}
