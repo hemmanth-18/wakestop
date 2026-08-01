@@ -94,17 +94,13 @@ export default function AlarmOverlay({
         )}
       </div>
 
-      {!isArrived && (
-        <button
-          onClick={handleAcknowledgeClick}
-          className="mt-10 rounded-2xl bg-night-950 px-10 py-5 font-display text-xl font-bold text-white shadow-[0_0_30px_rgba(0,0,0,0.6)] active:scale-95 transition-all hover:scale-105"
-        >
-          I've Woken Up
-        </button>
-      )}
-      {isArrived && (
-        <p className="mt-8 text-sm opacity-80">You can now exit this screen.</p>
-      )}
+      <button
+        onClick={handleAcknowledgeClick}
+        className="mt-8 flex items-center justify-center gap-2.5 rounded-2xl bg-night-950 px-8 py-4 sm:px-10 sm:py-5 font-display text-lg sm:text-xl font-bold text-white shadow-[0_0_30px_rgba(0,0,0,0.6)] active:scale-95 transition-all hover:scale-105"
+      >
+        <CheckIcon size={24} className={isArrived ? "text-neon-emerald" : "text-neon-gold"} />
+        {isArrived ? "Stop Alarm & Complete Trip" : "I've Woken Up"}
+      </button>
     </div>
   );
 }
