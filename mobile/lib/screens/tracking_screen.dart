@@ -17,7 +17,6 @@ class TrackingScreen extends StatefulWidget {
 
 class _TrackingScreenState extends State<TrackingScreen> {
   StreamSubscription<Position>? _positionStream;
-  Position? _currentPosition;
   double? _distanceMeters;
   String _stage = 'idle'; // idle, notify, alarm, critical, arrived
   bool _alarmOverlayVisible = false;
@@ -46,7 +45,6 @@ class _TrackingScreenState extends State<TrackingScreen> {
       ),
     ).listen((Position position) {
       setState(() {
-        _currentPosition = position;
         _distanceMeters = Geolocator.distanceBetween(
           position.latitude,
           position.longitude,

@@ -29,9 +29,8 @@ class AlarmService {
 
     // 2. Play Audio Tone on USAGE_ALARM stream
     try {
-      await _audioPlayer.setAudioContext(AudioContext(
-        android: const AudioContextAndroid(
-          isExecutiveFocus: true,
+      await _audioPlayer.setAudioContext(const AudioContext(
+        android: AudioContextAndroid(
           audioMode: AndroidAudioMode.normal,
           contentType: AndroidContentType.sonification,
           usageType: AndroidUsageType.alarm,

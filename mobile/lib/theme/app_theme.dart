@@ -20,7 +20,6 @@ class AppTheme {
         primary: neonCyan,
         secondary: neonGold,
         surface: night900,
-        background: night950,
         error: alertRed,
       ),
       appBarTheme: const AppBarTheme(
@@ -30,7 +29,7 @@ class AppTheme {
         titleTextStyle: TextStyle(
           color: Colors.white,
           fontSize: 22,
-          fontWeight: FontWeight.extrabold,
+          fontWeight: FontWeight.w800,
           letterSpacing: -0.5,
         ),
       ),
