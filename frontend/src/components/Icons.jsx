@@ -457,9 +457,9 @@ export const BatteryChargingIcon = ({ size = 24, className = "", ...props }) => 
     className={className}
     {...props}
   >
-    <path d="M3 9h13a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z" />
-    <path d="M17 11h1a1 1 0 0 1 1 1v.5a1 1 0 0 1-1 1h-1" />
-    <path d="M10 9 8 12h4l-2 3" />
+    <rect width="15" height="12" x="2" y="6" rx="2" ry="2" />
+    <path d="M21 10v4" />
+    <path d="M10 8l-3 4h4l-2 4" />
   </svg>
 );
 
@@ -476,10 +476,10 @@ export const VibrateIcon = ({ size = 24, className = "", ...props }) => (
     className={className}
     {...props}
   >
-    <rect width="8" height="14" x="8" y="5" rx="2" />
-    <path d="M4 8a12 12 0 0 0 0 8" />
-    <path d="M20 8a12 12 0 0 1 0 8" />
-    <path d="M1 10a16 16 0 0 0 0 4" />
-    <path d="M23 10a16 16 0 0 1 0 4" />
+    <rect width="10" height="14" x="7" y="5" rx="2" />
+    <path d="M2 9v6" />
+    <path d="M22 9v6" />
+    <path d="M4 11v2" />
+    <path d="M20 11v2" />
   </svg>
 );
