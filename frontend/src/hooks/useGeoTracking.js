@@ -7,6 +7,8 @@ import {
   getVibrationEnabled,
   unlockAudioContext,
   requestNotificationPermission,
+  startAlarmVibration,
+  stopAlarmVibration,
 } from "../utils/audio";
 import { calculateDynamicEta, calculateAdaptiveThresholds } from "../utils/aiEngine";
 import { getRealBatteryState, evaluateBatteryRisk } from "../utils/batteryPredictor";
@@ -20,13 +22,13 @@ const DEFAULT_THRESHOLDS = {
 
 function triggerAudio(stage, notifOptions = {}) {
   const mult = stage === "critical" ? 1.5 : stage === "alarm" ? 1.2 : 1.0;
+  // Audio only — vibration is triggered independently
   playAlarmSound(getSavedSoundPreset(), mult, 10000, { stage, ...notifOptions });
 }
 
-function vibrate(pattern) {
-  if (getVibrationEnabled() && "vibrate" in navigator) {
-    navigator.vibrate(pattern);
-  }
+function vibrate(_pattern) {
+  // Kept for reference — actual vibration now goes through startAlarmVibration()
+  // which runs independently of audio. This stub prevents errors if called.
 }
 
 /**
@@ -85,6 +87,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     setStage("stopped");
     setIsBatteryCritical(false);
     clearRepeatTimer();
+    stopAlarmVibration(); // stop vibration independently
     if (alarmStartTime.current) {
       const elapsedSec = Math.max(1, Math.round((Date.now() - alarmStartTime.current) / 1000));
       setWakeResponseSec(elapsedSec);
@@ -112,13 +115,13 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     );
 
     playEarlyBatteryAlarm(getSavedSoundPreset());
-    // Strong rapid-burst pattern — short bursts felt strongest
-    vibrate([300, 80, 300, 80, 300, 80, 300, 80, 300, 80]);
+    // Start maximum-intensity vibration independently
+    startAlarmVibration("critical");
 
     clearRepeatTimer();
     repeatTimer.current = window.setInterval(() => {
       playEarlyBatteryAlarm(getSavedSoundPreset());
-      vibrate([300, 80, 300, 80, 300, 80, 300, 80, 300, 80]);
+      startAlarmVibration("critical"); // restart to keep it fresh
     }, 12000);
   }, []);
 
@@ -232,8 +235,8 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
               title: "⏰ WakeStop — Wake Up!",
               body: "You're approaching your stop! Gather your belongings now.",
             });
-            // Firm 3-burst wake-up pattern
-            vibrate([300, 100, 300, 100, 300]);
+            // Start vibration independently — NOT tied to audio
+            startAlarmVibration("alarm");
           } else if (nextStage === "critical") {
             notify(
               "🚨 Almost There! — WakeStop",
@@ -248,8 +251,8 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
               title: "🚨 WakeStop — Get Off Now!",
               body: "Destination under 500 m away! Step off the vehicle immediately!",
             });
-            // Rapid aggressive burst — most intense pattern
-            vibrate([300, 80, 300, 80, 300, 80, 300, 80, 300, 80]);
+            // Critical intensity vibration — independent from audio
+            startAlarmVibration("critical");
             manuallyStopped.current = false;
             clearRepeatTimer();
             repeatTimer.current = window.setInterval(() => {
@@ -257,7 +260,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
                 title: "🚨 WakeStop — Get Off Now!",
                 body: "Still approaching your stop! You must step off immediately!",
               });
-              vibrate([300, 80, 300, 80, 300, 80, 300, 80, 300, 80]);
+              startAlarmVibration("critical"); // keep vibration alive on each repeat
             }, 15000);
           } else if (nextStage === "arrived") {
             notify(
@@ -265,6 +268,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
               "Journey completed safely. Alarm deactivated.",
               { tag: "wakestop-arrived", vibrate: [200] }
             );
+            stopAlarmVibration(); // stop vibration on arrival
             clearRepeatTimer();
           }
         }

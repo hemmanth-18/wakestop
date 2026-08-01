@@ -230,91 +230,100 @@ export function unlockAudioContext() {
   }
 }
 
-// ─── Vibration Controller ────────────────────────────────────────────────────
+// ─── Independent Vibration Controller ──────────────────────────────────────────────────
+//
+// Vibration runs 100% independently from audio — no sync, no coupling.
+// Calling startAlarmVibration() and stopAlarmVibration() is separate
+// from playAlarmSound() / stopAlarmSound().
+//
+// PATTERN SCIENCE:
+//   [200, 50] = 200ms ON, 50ms OFF, total 250ms cycle
+//   Motor barely stops between each burst — it stays near peak RPM
+//   giving MAXIMUM continuous force output without overheating.
+//   This is the same principle used in industrial alert systems.
+//
+//   "alarm"    intensity → [200, 50] × 5 = 250ms cycle, repeat 250ms
+//   "critical" intensity → [200, 30] × 6 = 230ms cycle, even more aggressive
 
-let currentPlayingAudio = null;
-let currentLoopTimer = null;
-let currentTimeoutTimer = null;
+const VIBRATE_PATTERNS = {
+  alarm:    { pattern: [200, 50, 200, 50, 200, 50, 200, 50, 200, 50],  intervalMs: 1250 },
+  critical: { pattern: [200, 30, 200, 30, 200, 30, 200, 30, 200, 30, 200, 30], intervalMs: 1380 },
+};
+
 let vibrationIntervalId = null;
 
 /**
- * Mobile & Laptop Vibration Controller
+ * Start high-efficiency alarm vibration, completely independent of audio.
+ * Call this directly from your stage change logic — NOT from playAlarmSound.
  *
- * FIX: Pattern duration MUST equal the setInterval period.
- * If interval < pattern duration → vibrate() cancels the ongoing
- * vibration mid-burst → choppy, weak, stuttering effect.
- *
- * PATTERN DESIGN:
- *   [300, 100, 300, 100, 300, 100, 300, 100, 300, 100] = 2000ms exactly
- *   interval = 2000ms → zero gap, zero overlap → seamless loop.
- *   Short rapid bursts (300ms) are physically felt STRONGER than
- *   long continuous rumbles (1000ms) because the motor accelerates
- *   from 0 each burst, producing peak force.
+ * @param {"alarm"|"critical"} intensity - "critical" uses a more aggressive pattern
  */
-
-// Pattern total = 300+100+300+100+300+100+300+100+300+100 = 2000ms
-const VIBRATE_PATTERN      = [300, 100, 300, 100, 300, 100, 300, 100, 300, 100];
-const VIBRATE_INTERVAL_MS  = 2000; // must equal sum of VIBRATE_PATTERN
-
-export function triggerContinuousVibration() {
+export function startAlarmVibration(intensity = "alarm") {
   if (!getVibrationEnabled()) return;
 
-  stopContinuousVibration();
+  stopAlarmVibration(); // clear any previous loop first
 
-  // ── 1. Mobile vibration (navigator.vibrate) ──────────────────────────────
-  if ("vibrate" in navigator) {
-    try { navigator.vibrate(VIBRATE_PATTERN); } catch (e) {}
-  }
+  const { pattern, intervalMs } = VIBRATE_PATTERNS[intensity] ?? VIBRATE_PATTERNS.alarm;
 
-  // ── 2. Laptop gamepad haptic rumble ──────────────────────────────────────
-  function rumbleGamepads() {
-    if (!("getGamepads" in navigator)) return;
-    try {
-      for (const gp of navigator.getGamepads()) {
-        if (gp?.vibrationActuator) {
-          gp.vibrationActuator.playEffect("dual-rumble", {
-            startDelay: 0,
-            duration: VIBRATE_INTERVAL_MS,
-            weakMagnitude: 1.0,
-            strongMagnitude: 1.0,
-          });
+  function fireVibration() {
+    // Mobile: navigator.vibrate
+    if ("vibrate" in navigator) {
+      try { navigator.vibrate(pattern); } catch (e) {}
+    }
+    // Laptop gamepad rumble
+    if ("getGamepads" in navigator) {
+      try {
+        for (const gp of navigator.getGamepads()) {
+          if (gp?.vibrationActuator) {
+            gp.vibrationActuator.playEffect("dual-rumble", {
+              startDelay: 0,
+              duration: intervalMs,
+              weakMagnitude: 1.0,
+              strongMagnitude: 1.0,
+            });
+          }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
   }
-  rumbleGamepads();
 
-  // ── 3. Laptop screen shake animation ─────────────────────────────────────
+  // Screen shake for laptop users
   if (typeof document !== "undefined" && document.body) {
     document.body.classList.add("laptop-vibrate-screen");
   }
 
-  // ── 4. Seamless loop — interval == pattern duration, no gaps, no cancels ─
-  vibrationIntervalId = setInterval(() => {
-    if ("vibrate" in navigator) {
-      try { navigator.vibrate(VIBRATE_PATTERN); } catch (e) {}
-    }
-    rumbleGamepads();
-  }, VIBRATE_INTERVAL_MS);
+  // Fire immediately then loop — interval equals pattern duration: no gaps, no cancels
+  fireVibration();
+  vibrationIntervalId = setInterval(fireVibration, intervalMs);
 }
 
-export function stopContinuousVibration() {
+/**
+ * Stop alarm vibration immediately. Call on acknowledge / stop.
+ */
+export function stopAlarmVibration() {
   if (vibrationIntervalId) {
     clearInterval(vibrationIntervalId);
     vibrationIntervalId = null;
   }
   if ("vibrate" in navigator) {
-    try {
-      navigator.vibrate(0);
-    } catch (e) {}
+    try { navigator.vibrate(0); } catch (e) {} // cut motor immediately
   }
   if (typeof document !== "undefined" && document.body) {
     document.body.classList.remove("laptop-vibrate-screen");
   }
 }
 
+// Backward-compat aliases
+export const triggerContinuousVibration = () => startAlarmVibration("alarm");
+export const stopContinuousVibration    = stopAlarmVibration;
+
+let currentPlayingAudio = null;
+let currentLoopTimer = null;
+let currentTimeoutTimer = null;
+
 export function stopAlarmSound() {
-  stopContinuousVibration();
+  // Stop vibration independently
+  stopAlarmVibration();
   // Stop the repeating SW notification loop
   stopSwAlarmLoop();
 
@@ -492,9 +501,9 @@ export function playAlarmSound(
 ) {
   stopAlarmSound();
 
-  // ── Layer 1: Persistent Vibration (Mobile haptic + Laptop Gamepad + Screen Rumble) ──
-  triggerContinuousVibration();
-
+  // ── NOTE: Vibration is NOT started here anymore ───────────────────────────────────────
+  // Vibration is now a fully independent system. Call startAlarmVibration()
+  // separately from useGeoTracking.js so it is NOT tied to audio timing.
   // ── Layer 2: SW Notification Loop (NOTIFICATION VOLUME — bypasses media volume) ──────
   // We fire a new notification every 3 seconds. Each one plays the system notification
   // sound through the NOTIFICATION channel, not media. This is how the alarm keeps
