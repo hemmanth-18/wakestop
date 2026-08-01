@@ -12,7 +12,7 @@ export default function Landing() {
 
       <div className="relative z-10 mx-auto max-w-3xl">
         {/* Logo icon */}
-        <div className="mx-auto mb-6 flex h-18 w-18 sm:h-20 sm:w-20 items-center justify-center rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(0,240,255,0.4)] border border-neon-cyan/40">
+        <div className="mx-auto mb-6 flex h-32 w-32 sm:h-40 sm:w-40 items-center justify-center rounded-3xl overflow-hidden bg-night-900/80 p-2 shadow-[0_0_50px_rgba(0,240,255,0.45)] border-2 border-neon-cyan/50 backdrop-blur-xl">
           <img src="/logo.png" alt="WakeStop" className="h-full w-full object-contain" />
         </div>
 
