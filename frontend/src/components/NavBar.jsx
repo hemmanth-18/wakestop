@@ -46,8 +46,8 @@ export default function NavBar() {
       <div className="flex w-full items-center justify-between px-4 sm:px-8 py-2.5">
         {/* Logo */}
         <Link to="/" onClick={closeMobile} className="flex items-center gap-3">
-          <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.5)] border-2 border-neon-cyan shrink-0">
-            <img src="/logo.png" alt="WakeStop" className="h-full w-full rounded-full object-cover scale-[1.05]" />
+          <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.5)] border-2 border-neon-cyan shrink-0 bg-night-950">
+            <img src="/logo.png" alt="WakeStop" className="h-full w-full rounded-full object-cover scale-[1.38]" />
           </div>
           <span className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-white neon-text-cyan">
             WakeStop
