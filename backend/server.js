@@ -34,8 +34,9 @@ app.use(morgan("dev"));
 
 // Normalize request URL for Vercel Serverless Function invocations
 app.use((req, res, next) => {
-  if (req.headers["x-matched-path"]) {
-    req.url = req.headers["x-matched-path"];
+  const rawUrl = req.originalUrl || req.url || "";
+  if (rawUrl && !rawUrl.includes("/api/index") && !rawUrl.includes("/api/[...path]")) {
+    req.url = rawUrl;
   }
   next();
 });
