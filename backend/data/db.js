@@ -9,9 +9,9 @@ const LOCAL_DB_FILE = path.join(process.cwd(), "backend", "data", "local_db.json
 let supabaseClient = null;
 
 try {
-  const supabaseUrl = process.env.SUPABASE_URL || "https://yxeqlxbhoedoafbrsufe.supabase.co";
+  const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (supabaseUrl && supabaseKey && typeof supabaseKey === "string" && supabaseKey.length > 20 && !supabaseKey.startsWith("sb_publishable_08")) {
+  if (supabaseUrl && supabaseKey && typeof supabaseKey === "string" && supabaseKey.length > 20) {
     supabaseClient = createClient(supabaseUrl, supabaseKey);
     console.log("⚡ Connected strictly to Supabase Cloud Database");
   }
