@@ -12,14 +12,22 @@ async function getTransporter() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
-  if (host && user && pass) {
-    transporter = nodemailer.createTransport({
-      host: host,
-      port: parseInt(process.env.SMTP_PORT || "587", 10),
-      secure: process.env.SMTP_SECURE === "true",
-      auth: { user, pass },
-    });
-    console.log(`📧 Configured custom SMTP transporter for ${host}`);
+  if (user && pass) {
+    if (host === "smtp.gmail.com" || user.endsWith("@gmail.com")) {
+      transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: { user, pass },
+      });
+      console.log(`📧 Configured Gmail SMTP transporter for ${user}`);
+    } else {
+      transporter = nodemailer.createTransport({
+        host: host || "smtp.gmail.com",
+        port: parseInt(process.env.SMTP_PORT || "465", 10),
+        secure: process.env.SMTP_SECURE !== "false",
+        auth: { user, pass },
+      });
+      console.log(`📧 Configured custom SMTP transporter for ${host}`);
+    }
   } else {
     // Generate Ethereal Email test account if no SMTP provided
     try {
@@ -45,6 +53,7 @@ async function getTransporter() {
 
 export async function sendResetCodeEmail(toEmail, code, username = "Commuter") {
   const subject = "WakeStop — 6-Digit Password Reset Verification Code";
+  const senderEmail = process.env.SMTP_USER || "no-reply@wakestop.app";
   const htmlContent = `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #050811; color: #ffffff; padding: 30px; border-radius: 16px; max-width: 500px; margin: 0 auto; border: 1px solid #00F0FF;">
       <div style="text-align: center; margin-bottom: 20px;">
@@ -70,28 +79,26 @@ export async function sendResetCodeEmail(toEmail, code, username = "Commuter") {
   `;
 
   console.log(`\n======================================================`);
-  console.log(`✉️  EMAIL DISPATCHED TO: ${toEmail}`);
-  console.log(`🔑  6-DIGIT VERIFICATION CODE: [ ${code} ]`);
+  console.log(`✉️  DISPATCHING REAL EMAIL TO: ${toEmail}`);
+  console.log(`🔑  VERIFICATION CODE: [ ${code} ]`);
   console.log(`======================================================\n`);
 
   try {
     const mailTransporter = await getTransporter();
     if (mailTransporter) {
       const info = await mailTransporter.sendMail({
-        from: '"WakeStop Security" <no-reply@wakestop.app>',
+        from: `"WakeStop Security" <${senderEmail}>`,
         to: toEmail,
         subject: subject,
         html: htmlContent,
       });
 
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      if (previewUrl) {
-        console.log(`🔗 Ethereal Email Preview URL: ${previewUrl}`);
-        return { success: true, previewUrl };
-      }
+      console.log(`✅ Email sent successfully! MessageId: ${info.messageId}`);
+      return { success: true };
     }
   } catch (err) {
-    console.warn("Nodemailer send notice:", err?.message);
+    console.error("❌ Gmail SMTP send error:", err?.message);
+    throw new Error(`Email delivery failed: ${err?.message}`);
   }
 
   return { success: true };
