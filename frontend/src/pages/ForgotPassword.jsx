@@ -4,7 +4,7 @@ import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
-import { EyeIcon, EyeOffIcon, CheckIcon, AlertIcon, KeyIcon } from "../components/Icons";
+import { EyeIcon, EyeOffIcon, CheckIcon, AlertIcon, KeyIcon, MailIcon } from "../components/Icons";
 
 function getPasswordStrength(pass) {
   if (!pass) return { score: 0, label: "", color: "bg-night-800" };
@@ -192,7 +192,7 @@ export default function ForgotPassword() {
           {/* Clean Email Sent Notice */}
           {step === 2 && (
             <div className="mb-5 rounded-2xl border border-neon-cyan/40 bg-night-900/90 p-4 shadow-[0_0_20px_rgba(0,240,255,0.2)] text-left flex items-start gap-3">
-              <span className="text-xl shrink-0">✉️</span>
+              <MailIcon size={22} className="text-neon-cyan shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">
                 <p className="font-bold text-white text-sm">Verification Code Sent</p>
                 <p className="text-night-400 leading-relaxed">
