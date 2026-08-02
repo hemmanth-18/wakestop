@@ -70,26 +70,27 @@ export const db = {
             .from("users")
             .select("*")
             .ilike("email", targetEmail)
-            .maybeSingle();
+            .limit(1);
 
           if (error) {
             console.warn("Supabase findByEmail notice:", error.message);
           }
 
-          if (data) {
+          const userRow = data && data.length > 0 ? data[0] : null;
+          if (userRow) {
             const userObj = {
-              id: data.id,
-              name: data.name,
-              email: data.email,
-              passwordHash: data.password_hash || data.passwordHash,
-              profileImage: data.profile_image || data.profileImage || "",
-              resetCode: data.reset_code || data.resetCode || null,
-              resetCodeExpiry: data.reset_code_expiry || data.resetCodeExpiry || null,
-              createdAt: data.created_at || data.createdAt,
-              updatedAt: data.updated_at || data.updatedAt,
+              id: userRow.id,
+              name: userRow.name,
+              email: userRow.email,
+              passwordHash: userRow.password_hash || userRow.passwordHash,
+              profileImage: userRow.profile_image || userRow.profileImage || "",
+              resetCode: userRow.reset_code || userRow.resetCode || null,
+              resetCodeExpiry: userRow.reset_code_expiry || userRow.resetCodeExpiry || null,
+              createdAt: userRow.created_at || userRow.createdAt,
+              updatedAt: userRow.updated_at || userRow.updatedAt,
             };
             const idx = localStore.users.findIndex(
-              (u) => u && (u.id === data.id || (typeof u.email === "string" && u.email.toLowerCase() === targetEmail))
+              (u) => u && (u.id === userRow.id || (typeof u.email === "string" && u.email.toLowerCase() === targetEmail))
             );
             if (idx !== -1) {
               localStore.users[idx] = userObj;
@@ -116,23 +117,24 @@ export const db = {
             .from("users")
             .select("*")
             .eq("id", id)
-            .maybeSingle();
+            .limit(1);
 
           if (error) {
             console.warn("Supabase findById notice:", error.message);
           }
 
-          if (data) {
+          const userRow = data && data.length > 0 ? data[0] : null;
+          if (userRow) {
             const userObj = {
-              id: data.id,
-              name: data.name,
-              email: data.email,
-              passwordHash: data.password_hash || data.passwordHash,
-              profileImage: data.profile_image || data.profileImage || "",
-              resetCode: data.reset_code || data.resetCode || null,
-              resetCodeExpiry: data.reset_code_expiry || data.resetCodeExpiry || null,
-              createdAt: data.created_at || data.createdAt,
-              updatedAt: data.updated_at || data.updatedAt,
+              id: userRow.id,
+              name: userRow.name,
+              email: userRow.email,
+              passwordHash: userRow.password_hash || userRow.passwordHash,
+              profileImage: userRow.profile_image || userRow.profileImage || "",
+              resetCode: userRow.reset_code || userRow.resetCode || null,
+              resetCodeExpiry: userRow.reset_code_expiry || userRow.resetCodeExpiry || null,
+              createdAt: userRow.created_at || userRow.createdAt,
+              updatedAt: userRow.updated_at || userRow.updatedAt,
             };
             const idx = localStore.users.findIndex((u) => u && u.id === id);
             if (idx !== -1) {

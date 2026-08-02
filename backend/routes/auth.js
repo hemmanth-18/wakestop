@@ -48,11 +48,13 @@ const handleLogin = async (req, res) => {
 
     const user = await db.users.findByEmail(cleanEmail);
     if (!user) {
+      console.warn("⚠️ Login failed: User not found for email:", cleanEmail);
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
     const passwordHash = user.passwordHash || user.password_hash;
     if (!passwordHash) {
+      console.warn("⚠️ Login failed: No password hash stored for email:", cleanEmail);
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
@@ -65,6 +67,7 @@ const handleLogin = async (req, res) => {
     }
 
     if (!match) {
+      console.warn("⚠️ Login failed: Password mismatch for email:", cleanEmail);
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
