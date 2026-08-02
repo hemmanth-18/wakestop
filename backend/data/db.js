@@ -76,7 +76,11 @@ export const db = {
               name: data.name,
               email: data.email,
               passwordHash: data.password_hash || data.passwordHash,
-              createdAt: data.created_at,
+              profileImage: data.profile_image || data.profileImage || "",
+              resetCode: data.reset_code || data.resetCode || null,
+              resetCodeExpiry: data.reset_code_expiry || data.resetCodeExpiry || null,
+              createdAt: data.created_at || data.createdAt,
+              updatedAt: data.updated_at || data.updatedAt,
             };
           }
         } catch (e) {
@@ -101,8 +105,12 @@ export const db = {
               id: data.id,
               name: data.name,
               email: data.email,
-              passwordHash: data.password_hash,
-              createdAt: data.created_at,
+              passwordHash: data.password_hash || data.passwordHash,
+              profileImage: data.profile_image || data.profileImage || "",
+              resetCode: data.reset_code || data.resetCode || null,
+              resetCodeExpiry: data.reset_code_expiry || data.resetCodeExpiry || null,
+              createdAt: data.created_at || data.createdAt,
+              updatedAt: data.updated_at || data.updatedAt,
             };
           }
         } catch (e) {
@@ -118,7 +126,11 @@ export const db = {
         name: user.name,
         email: user.email,
         passwordHash: user.passwordHash,
-        createdAt: user.createdAt,
+        profileImage: user.profileImage || "",
+        resetCode: user.resetCode || null,
+        resetCodeExpiry: user.resetCodeExpiry || null,
+        createdAt: user.createdAt || new Date().toISOString(),
+        updatedAt: user.updatedAt || new Date().toISOString(),
       };
       if (!localStore.users.some((u) => u.id === user.id)) {
         localStore.users.push(localUser);
@@ -134,6 +146,7 @@ export const db = {
               name: user.name,
               email: user.email,
               password_hash: user.passwordHash,
+              profile_image: user.profileImage || "",
               created_at: user.createdAt,
             })
             .select()
@@ -145,6 +158,7 @@ export const db = {
               name: data.name,
               email: data.email,
               passwordHash: data.password_hash,
+              profileImage: data.profile_image || "",
               createdAt: data.created_at,
             };
           }
@@ -153,6 +167,38 @@ export const db = {
         }
       }
       return localUser;
+    },
+    update: async (id, patch) => {
+      const idx = localStore.users.findIndex((u) => u.id === id);
+      if (idx !== -1) {
+        localStore.users[idx] = {
+          ...localStore.users[idx],
+          ...patch,
+          updatedAt: new Date().toISOString(),
+        };
+        saveLocalStore();
+      }
+
+      if (supabase) {
+        try {
+          const updateObj = {};
+          if (patch.name !== undefined) updateObj.name = patch.name;
+          if (patch.passwordHash !== undefined) updateObj.password_hash = patch.passwordHash;
+          if (patch.profileImage !== undefined) updateObj.profile_image = patch.profileImage;
+          if (patch.resetCode !== undefined) updateObj.reset_code = patch.resetCode;
+          if (patch.resetCodeExpiry !== undefined) updateObj.reset_code_expiry = patch.resetCodeExpiry;
+          updateObj.updated_at = new Date().toISOString();
+
+          await supabase
+            .from("users")
+            .update(updateObj)
+            .eq("id", id);
+        } catch (e) {
+          console.warn("Supabase update user exception:", e?.message);
+        }
+      }
+
+      return idx !== -1 ? localStore.users[idx] : null;
     },
   },
 
@@ -327,6 +373,19 @@ export const db = {
         }
       }
       return idx !== -1 ? localStore.trips[idx] : null;
+    },
+    deleteByUser: async (userId) => {
+      localStore.trips = (localStore.trips || []).filter((t) => t.userId !== userId);
+      saveLocalStore();
+
+      if (supabase) {
+        try {
+          await supabase.from("trips").delete().eq("user_id", userId);
+        } catch (e) {
+          console.warn("Supabase deleteByUser trips exception:", e?.message);
+        }
+      }
+      return true;
     },
   },
 

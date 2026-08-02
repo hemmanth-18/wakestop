@@ -63,4 +63,14 @@ router.get("/history", async (req, res) => {
   }
 });
 
+router.delete("/history", async (req, res) => {
+  try {
+    await db.trips.deleteByUser(req.userId);
+    return res.json({ message: "All trip history deleted successfully" });
+  } catch (err) {
+    console.error("Delete trip history error:", err);
+    return res.status(500).json({ error: err.message || "Could not delete trip history" });
+  }
+});
+
 export default router;

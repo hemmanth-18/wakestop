@@ -9,13 +9,32 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem("wakestop_token");
-    const savedUser = localStorage.getItem("wakestop_user");
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+    async function initAuth() {
+      const savedToken = localStorage.getItem("wakestop_token");
+      const savedUser = localStorage.getItem("wakestop_user");
+      if (savedToken) {
+        setToken(savedToken);
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch (e) {
+            // ignore JSON parse error
+          }
+        }
+        // Validate & fetch fresh user profile from backend
+        try {
+          const res = await api.getProfile(savedToken);
+          if (res.user) {
+            persist(savedToken, res.user);
+          }
+        } catch (err) {
+          console.warn("Session expired or invalid token:", err.message);
+          logout();
+        }
+      }
+      setLoading(false);
     }
-    setLoading(false);
+    initAuth();
   }, []);
 
   function persist(t, u) {
@@ -28,11 +47,32 @@ export function AuthProvider({ children }) {
   async function login(email, password) {
     const res = await api.login(email, password);
     persist(res.token, res.user);
+    return res.user;
   }
 
   async function register(name, email, password) {
     const res = await api.register(name, email, password);
     persist(res.token, res.user);
+    return res.user;
+  }
+
+  async function updateUserProfile(patch) {
+    if (!token) throw new Error("Not authenticated");
+    const res = await api.updateProfile(token, patch);
+    if (res.user) {
+      persist(token, res.user);
+    }
+    return res.user;
+  }
+
+  async function changePassword(currentPassword, newPassword) {
+    if (!token) throw new Error("Not authenticated");
+    return await api.changePassword(token, currentPassword, newPassword);
+  }
+
+  async function deleteHistory() {
+    if (!token) throw new Error("Not authenticated");
+    return await api.deleteHistory(token);
   }
 
   function logout() {
@@ -43,7 +83,19 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        login,
+        register,
+        updateUserProfile,
+        changePassword,
+        deleteHistory,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

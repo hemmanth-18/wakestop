@@ -2,6 +2,21 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
+import { EyeIcon, EyeOffIcon, CheckIcon, AlertIcon } from "../components/Icons";
+
+function getPasswordStrength(pass) {
+  if (!pass) return { score: 0, label: "", color: "bg-night-800" };
+  let score = 0;
+  if (pass.length >= 6) score += 1;
+  if (pass.length >= 10) score += 1;
+  if (/[A-Z]/.test(pass)) score += 1;
+  if (/[0-9]/.test(pass)) score += 1;
+  if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+  if (score <= 2) return { score: 33, label: "Weak", color: "bg-alert-500", text: "text-alert-500" };
+  if (score <= 4) return { score: 66, label: "Fair", color: "bg-neon-gold", text: "text-neon-gold" };
+  return { score: 100, label: "Strong", color: "bg-neon-emerald", text: "text-neon-emerald" };
+}
 
 export default function Register() {
   const { register } = useAuth();
@@ -9,12 +24,28 @@ export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  const strength = getPasswordStrength(password);
+  const isMatch = confirmPassword.length > 0 && password === confirmPassword;
 
   async function onSubmit(e) {
     e.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please re-enter.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      return;
+    }
+
     setBusy(true);
     try {
       await register(name, email, password);
@@ -76,6 +107,7 @@ export default function Register() {
                     {error}
                   </p>
                 )}
+
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-neon-gold">
                     Full Name
@@ -88,6 +120,7 @@ export default function Register() {
                     placeholder="Your Name"
                   />
                 </div>
+
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-neon-gold">
                     Email Address
@@ -101,24 +134,101 @@ export default function Register() {
                     placeholder="you@example.com"
                   />
                 </div>
+
+                {/* Password Input with Eye Toggle */}
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-neon-gold">
                     Password
                   </label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-xl border border-night-700 bg-night-900/90 px-3.5 py-3 text-sm text-white outline-none focus:border-neon-gold focus:shadow-[0_0_15px_rgba(255,184,0,0.2)] transition-all"
-                    placeholder="At least 6 characters"
-                  />
+                  <div className="relative flex items-center">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      minLength={6}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full rounded-xl border border-night-700 bg-night-900/90 pl-3.5 pr-11 py-3 text-sm text-white outline-none focus:border-neon-gold focus:shadow-[0_0_15px_rgba(255,184,0,0.2)] transition-all"
+                      placeholder="At least 6 characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 text-night-400 hover:text-neon-gold transition-colors"
+                    >
+                      {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                    </button>
+                  </div>
+
+                  {/* Password Strength Meter */}
+                  {password.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className="text-night-400">Strength:</span>
+                        <span className={`font-bold ${strength.text}`}>{strength.label}</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-night-950 overflow-hidden border border-night-800">
+                        <div
+                          className={`h-full ${strength.color} transition-all duration-300`}
+                          style={{ width: `${strength.score}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Confirm Password Input */}
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-neon-gold">
+                    Confirm Password
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className={`w-full rounded-xl border bg-night-900/90 pl-3.5 pr-11 py-3 text-sm text-white outline-none transition-all ${
+                        confirmPassword.length > 0
+                          ? isMatch
+                            ? "border-neon-emerald/60 focus:border-neon-emerald"
+                            : "border-alert-500/60 focus:border-alert-500"
+                          : "border-night-700 focus:border-neon-gold"
+                      }`}
+                      placeholder="Re-enter your password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 text-night-400 hover:text-neon-gold transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                    </button>
+                  </div>
+
+                  {/* Match Indicator */}
+                  {confirmPassword.length > 0 && (
+                    <p
+                      className={`mt-1 text-[11px] font-medium flex items-center gap-1 ${
+                        isMatch ? "text-neon-emerald" : "text-alert-500"
+                      }`}
+                    >
+                      {isMatch ? (
+                        <>
+                          <CheckIcon size={12} /> Passwords match
+                        </>
+                      ) : (
+                        <>
+                          <AlertIcon size={12} /> Passwords do not match
+                        </>
+                      )}
+                    </p>
+                  )}
+                </div>
+
                 <button
                   type="submit"
                   disabled={busy}
-                  className="mt-2 w-full rounded-xl bg-neon-gold py-3.5 font-display font-bold text-night-950 shadow-[0_0_20px_rgba(255,184,0,0.4)] hover:brightness-110 active:scale-98 transition-all disabled:opacity-60"
+                  className="mt-2 w-full rounded-xl bg-neon-gold py-3.5 font-display font-bold text-night-950 shadow-[0_0_20px_rgba(255,184,0,0.4)] hover:brightness-110 active:scale-98 transition-all disabled:opacity-60 cursor-pointer"
                 >
                   {busy ? "Creating Account…" : "Create Account"}
                 </button>

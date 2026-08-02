@@ -60,5 +60,22 @@ export const api = {
   endTrip: (token, tripId, wakeResponseSec) =>
     request(`/trips/${tripId}/end`, { method: "POST", token, body: { wakeResponseSec } }),
 
-  tripHistory: (token) => request("/trips/history", { token }),
+  getProfile: (token) => request("/auth/me", { token }),
+
+  updateProfile: (token, patch) =>
+    request("/auth/profile", { method: "PUT", token, body: patch }),
+
+  changePassword: (token, currentPassword, newPassword) =>
+    request("/auth/change-password", { method: "POST", token, body: { currentPassword, newPassword } }),
+
+  forgotPassword: (email) =>
+    request("/auth/forgot-password", { method: "POST", body: { email } }),
+
+  verifyCode: (email, code) =>
+    request("/auth/verify-code", { method: "POST", body: { email, code } }),
+
+  resetPassword: (email, code, newPassword) =>
+    request("/auth/reset-password", { method: "POST", body: { email, code, newPassword } }),
+
+  deleteHistory: (token) => request("/trips/history", { method: "DELETE", token }),
 };
