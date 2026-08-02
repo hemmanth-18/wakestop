@@ -154,17 +154,17 @@ export function BatteryRiskCard({ etaMinutes = 60, onSimulateEarlyAlarm = null }
       {/* Main Grid: Battery Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {/* Battery Level */}
-        <div className="bg-night-900/60 rounded-xl p-3 border border-white/5 flex flex-col justify-between">
-          <span className="text-[11px] text-night-400 uppercase font-mono block mb-1">
+        <div className="bg-night-900/60 rounded-xl p-3 border border-white/5 overflow-hidden flex flex-col justify-between min-w-0">
+          <span className="text-[11px] text-night-400 uppercase font-mono block mb-1 truncate">
             Battery Level
           </span>
-          <div className="flex items-center justify-between gap-1">
-            <span className={`text-2xl font-bold font-mono ${risk.batteryPct <= 15 ? 'text-alert-500 font-extrabold' : 'text-white'}`}>
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className={`text-2xl font-bold font-mono leading-none ${risk.batteryPct <= 15 ? 'text-alert-500 font-extrabold' : 'text-white'}`}>
               {risk.batteryPct}%
             </span>
             {risk.isCharging && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-neon-emerald font-bold font-mono bg-neon-emerald/15 px-2 py-0.5 rounded-full border border-neon-emerald/30 shrink-0">
-                <ZapIcon size={11} className="text-neon-emerald fill-neon-emerald" />
+              <span className="inline-flex items-center gap-1 text-[10px] text-neon-emerald font-bold font-mono bg-neon-emerald/15 px-1.5 py-0.5 rounded-full border border-neon-emerald/30 self-start whitespace-nowrap">
+                <ZapIcon size={10} className="text-neon-emerald shrink-0" />
                 Charging
               </span>
             )}
