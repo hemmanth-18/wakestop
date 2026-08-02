@@ -211,17 +211,9 @@ export const db = {
     },
 
     update: async (id, patch) => {
-      const idx = localStore.users.findIndex((u) => u.id === id);
-      if (idx !== -1) {
-        localStore.users[idx] = {
-          ...localStore.users[idx],
-          ...patch,
-          updatedAt: new Date().toISOString(),
-        };
-        saveLocalStore();
-      }
+      let updatedUser = null;
 
-      if (supabase) {
+      if (supabase && id) {
         try {
           const updateObj = {};
           if (patch.name !== undefined) updateObj.name = patch.name;
@@ -231,22 +223,70 @@ export const db = {
           if (patch.resetCodeExpiry !== undefined) updateObj.reset_code_expiry = patch.resetCodeExpiry;
           updateObj.updated_at = new Date().toISOString();
 
-          const { error } = await supabase
+          let { data, error } = await supabase
             .from("users")
             .update(updateObj)
-            .eq("id", id);
+            .eq("id", id)
+            .select()
+            .maybeSingle();
+
+          if (!data && patch.email) {
+            const fallbackRes = await supabase
+              .from("users")
+              .update(updateObj)
+              .ilike("email", patch.email)
+              .select()
+              .maybeSingle();
+            data = fallbackRes.data;
+          }
 
           if (error) {
             console.warn("Supabase update user notice:", error.message);
-          } else {
-            console.log("✅ Supabase user updated successfully for id:", id);
+          }
+
+          if (data) {
+            console.log("✅ Supabase user updated successfully for id:", id || data.id);
+            updatedUser = {
+              id: data.id,
+              name: data.name,
+              email: data.email,
+              passwordHash: data.password_hash || data.passwordHash,
+              profileImage: data.profile_image || data.profileImage || "",
+              resetCode: data.reset_code || data.resetCode || null,
+              resetCodeExpiry: data.reset_code_expiry || data.resetCodeExpiry || null,
+              createdAt: data.created_at || data.createdAt,
+              updatedAt: data.updated_at || data.updatedAt,
+            };
+
+            const idx = localStore.users.findIndex(
+              (u) => u && (u.id === data.id || (typeof u.email === "string" && u.email.toLowerCase() === data.email.toLowerCase()))
+            );
+            if (idx !== -1) {
+              localStore.users[idx] = updatedUser;
+            } else {
+              localStore.users.push(updatedUser);
+            }
+            return updatedUser;
           }
         } catch (e) {
           console.warn("Supabase update user exception:", e?.message);
         }
       }
 
-      return idx !== -1 ? localStore.users[idx] : null;
+      const idx = localStore.users.findIndex(
+        (u) => u && (u.id === id || (patch.email && typeof u.email === "string" && u.email.toLowerCase() === patch.email.toLowerCase()))
+      );
+      if (idx !== -1) {
+        localStore.users[idx] = {
+          ...localStore.users[idx],
+          ...patch,
+          updatedAt: new Date().toISOString(),
+        };
+        saveLocalStore();
+        return localStore.users[idx];
+      }
+
+      return updatedUser;
     },
   },
 
