@@ -73,11 +73,11 @@ export const db = {
             .maybeSingle();
 
           if (error) {
-            console.warn("Supabase findByEmail error notice:", error.message);
+            console.warn("Supabase findByEmail notice:", error.message);
           }
 
           if (data) {
-            return {
+            const userObj = {
               id: data.id,
               name: data.name,
               email: data.email,
@@ -88,6 +88,15 @@ export const db = {
               createdAt: data.created_at || data.createdAt,
               updatedAt: data.updated_at || data.updatedAt,
             };
+            const idx = localStore.users.findIndex(
+              (u) => u && (u.id === data.id || (typeof u.email === "string" && u.email.toLowerCase() === targetEmail))
+            );
+            if (idx !== -1) {
+              localStore.users[idx] = userObj;
+            } else {
+              localStore.users.push(userObj);
+            }
+            return userObj;
           }
         } catch (e) {
           console.warn("Supabase findByEmail exception:", e?.message);
@@ -97,7 +106,10 @@ export const db = {
       const local = (localStore.users || []).find((u) => u && typeof u.email === "string" && u.email.toLowerCase() === targetEmail);
       return local ? { ...local, passwordHash: local.passwordHash || local.password_hash } : null;
     },
+
     findById: async (id) => {
+      if (!id) return null;
+
       if (supabase) {
         try {
           const { data, error } = await supabase
@@ -107,11 +119,11 @@ export const db = {
             .maybeSingle();
 
           if (error) {
-            console.warn("Supabase findById error notice:", error.message);
+            console.warn("Supabase findById notice:", error.message);
           }
 
           if (data) {
-            return {
+            const userObj = {
               id: data.id,
               name: data.name,
               email: data.email,
@@ -122,6 +134,13 @@ export const db = {
               createdAt: data.created_at || data.createdAt,
               updatedAt: data.updated_at || data.updatedAt,
             };
+            const idx = localStore.users.findIndex((u) => u && u.id === id);
+            if (idx !== -1) {
+              localStore.users[idx] = userObj;
+            } else {
+              localStore.users.push(userObj);
+            }
+            return userObj;
           }
         } catch (e) {
           console.warn("Supabase findById exception:", e?.message);
@@ -130,6 +149,7 @@ export const db = {
       const local = (localStore.users || []).find((u) => u && u.id === id);
       return local || null;
     },
+
     insert: async (user) => {
       const localUser = {
         id: user.id,
@@ -142,10 +162,16 @@ export const db = {
         createdAt: user.createdAt || new Date().toISOString(),
         updatedAt: user.updatedAt || new Date().toISOString(),
       };
-      if (!localStore.users.some((u) => u.id === user.id)) {
+
+      const existingIdx = localStore.users.findIndex(
+        (u) => u && (u.id === user.id || (typeof u.email === "string" && u.email.toLowerCase() === user.email.toLowerCase()))
+      );
+      if (existingIdx !== -1) {
+        localStore.users[existingIdx] = localUser;
+      } else {
         localStore.users.push(localUser);
-        saveLocalStore();
       }
+      saveLocalStore();
 
       if (supabase) {
         try {
@@ -154,36 +180,25 @@ export const db = {
             name: user.name,
             email: user.email,
             password_hash: user.passwordHash,
-            passwordHash: user.passwordHash,
             profile_image: user.profileImage || "",
-            profileImage: user.profileImage || "",
             created_at: user.createdAt || new Date().toISOString(),
-            createdAt: user.createdAt || new Date().toISOString(),
           };
 
           const { data, error } = await supabase
             .from("users")
             .insert(supabasePayload)
             .select()
-            .single();
+            .maybeSingle();
 
           if (error) {
             console.error("❌ Supabase insert user error:", error.message);
-            // Fallback attempt with minimal core columns if custom column fail
-            await supabase.from("users").insert({
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              password_hash: user.passwordHash,
-            });
-          }
-
-          if (data) {
+          } else if (data) {
+            console.log("✅ Supabase user created successfully:", data.email);
             return {
               id: data.id,
               name: data.name,
               email: data.email,
-              passwordHash: data.password_hash || data.passwordHash,
+              passwordHash: data.password_hash || data.passwordHash || user.passwordHash,
               profileImage: data.profile_image || data.profileImage || "",
               createdAt: data.created_at || data.createdAt,
             };
@@ -194,6 +209,7 @@ export const db = {
       }
       return localUser;
     },
+
     update: async (id, patch) => {
       const idx = localStore.users.findIndex((u) => u.id === id);
       if (idx !== -1) {
@@ -209,24 +225,11 @@ export const db = {
         try {
           const updateObj = {};
           if (patch.name !== undefined) updateObj.name = patch.name;
-          if (patch.passwordHash !== undefined) {
-            updateObj.password_hash = patch.passwordHash;
-            updateObj.passwordHash = patch.passwordHash;
-          }
-          if (patch.profileImage !== undefined) {
-            updateObj.profile_image = patch.profileImage;
-            updateObj.profileImage = patch.profileImage;
-          }
-          if (patch.resetCode !== undefined) {
-            updateObj.reset_code = patch.resetCode;
-            updateObj.resetCode = patch.resetCode;
-          }
-          if (patch.resetCodeExpiry !== undefined) {
-            updateObj.reset_code_expiry = patch.resetCodeExpiry;
-            updateObj.resetCodeExpiry = patch.resetCodeExpiry;
-          }
+          if (patch.passwordHash !== undefined) updateObj.password_hash = patch.passwordHash;
+          if (patch.profileImage !== undefined) updateObj.profile_image = patch.profileImage;
+          if (patch.resetCode !== undefined) updateObj.reset_code = patch.resetCode;
+          if (patch.resetCodeExpiry !== undefined) updateObj.reset_code_expiry = patch.resetCodeExpiry;
           updateObj.updated_at = new Date().toISOString();
-          updateObj.updatedAt = new Date().toISOString();
 
           const { error } = await supabase
             .from("users")
@@ -235,6 +238,8 @@ export const db = {
 
           if (error) {
             console.warn("Supabase update user notice:", error.message);
+          } else {
+            console.log("✅ Supabase user updated successfully for id:", id);
           }
         } catch (e) {
           console.warn("Supabase update user exception:", e?.message);
