@@ -11,7 +11,7 @@ let supabaseClient = null;
 try {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (supabaseUrl && supabaseKey && typeof supabaseKey === "string" && supabaseKey.startsWith("eyJ")) {
+  if (supabaseUrl && supabaseKey && typeof supabaseKey === "string" && supabaseKey.length > 10) {
     supabaseClient = createClient(supabaseUrl, supabaseKey);
     console.log("⚡ Connected strictly to Supabase Cloud Database");
   } else {
@@ -72,7 +72,11 @@ export const db = {
             .eq("email", targetEmail)
             .maybeSingle();
 
-          if (!error && data) {
+          if (error) {
+            console.warn("Supabase findByEmail error notice:", error.message);
+          }
+
+          if (data) {
             return {
               id: data.id,
               name: data.name,
@@ -102,7 +106,11 @@ export const db = {
             .eq("id", id)
             .maybeSingle();
 
-          if (!error && data) {
+          if (error) {
+            console.warn("Supabase findById error notice:", error.message);
+          }
+
+          if (data) {
             return {
               id: data.id,
               name: data.name,
@@ -141,27 +149,43 @@ export const db = {
 
       if (supabase) {
         try {
+          const supabasePayload = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            password_hash: user.passwordHash,
+            passwordHash: user.passwordHash,
+            profile_image: user.profileImage || "",
+            profileImage: user.profileImage || "",
+            created_at: user.createdAt || new Date().toISOString(),
+            createdAt: user.createdAt || new Date().toISOString(),
+          };
+
           const { data, error } = await supabase
             .from("users")
-            .insert({
+            .insert(supabasePayload)
+            .select()
+            .single();
+
+          if (error) {
+            console.error("❌ Supabase insert user error:", error.message);
+            // Fallback attempt with minimal core columns if custom column fail
+            await supabase.from("users").insert({
               id: user.id,
               name: user.name,
               email: user.email,
               password_hash: user.passwordHash,
-              profile_image: user.profileImage || "",
-              created_at: user.createdAt,
-            })
-            .select()
-            .single();
+            });
+          }
 
-          if (!error && data) {
+          if (data) {
             return {
               id: data.id,
               name: data.name,
               email: data.email,
-              passwordHash: data.password_hash,
-              profileImage: data.profile_image || "",
-              createdAt: data.created_at,
+              passwordHash: data.password_hash || data.passwordHash,
+              profileImage: data.profile_image || data.profileImage || "",
+              createdAt: data.created_at || data.createdAt,
             };
           }
         } catch (e) {
@@ -185,16 +209,33 @@ export const db = {
         try {
           const updateObj = {};
           if (patch.name !== undefined) updateObj.name = patch.name;
-          if (patch.passwordHash !== undefined) updateObj.password_hash = patch.passwordHash;
-          if (patch.profileImage !== undefined) updateObj.profile_image = patch.profileImage;
-          if (patch.resetCode !== undefined) updateObj.reset_code = patch.resetCode;
-          if (patch.resetCodeExpiry !== undefined) updateObj.reset_code_expiry = patch.resetCodeExpiry;
+          if (patch.passwordHash !== undefined) {
+            updateObj.password_hash = patch.passwordHash;
+            updateObj.passwordHash = patch.passwordHash;
+          }
+          if (patch.profileImage !== undefined) {
+            updateObj.profile_image = patch.profileImage;
+            updateObj.profileImage = patch.profileImage;
+          }
+          if (patch.resetCode !== undefined) {
+            updateObj.reset_code = patch.resetCode;
+            updateObj.resetCode = patch.resetCode;
+          }
+          if (patch.resetCodeExpiry !== undefined) {
+            updateObj.reset_code_expiry = patch.resetCodeExpiry;
+            updateObj.resetCodeExpiry = patch.resetCodeExpiry;
+          }
           updateObj.updated_at = new Date().toISOString();
+          updateObj.updatedAt = new Date().toISOString();
 
-          await supabase
+          const { error } = await supabase
             .from("users")
             .update(updateObj)
             .eq("id", id);
+
+          if (error) {
+            console.warn("Supabase update user notice:", error.message);
+          }
         } catch (e) {
           console.warn("Supabase update user exception:", e?.message);
         }
