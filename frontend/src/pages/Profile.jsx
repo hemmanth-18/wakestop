@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { uploadImageToCloudinary } from "../services/cloudinary";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
 import {
   UserIcon,
@@ -96,7 +97,8 @@ export default function Profile() {
         const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
 
         try {
-          await updateUserProfile({ profileImage: compressedBase64 });
+          const cdnImageUrl = await uploadImageToCloudinary(compressedBase64);
+          await updateUserProfile({ profileImage: cdnImageUrl });
           showToast("Profile picture updated successfully!", "success");
         } catch (err) {
           showToast(err instanceof Error ? err.message : "Failed to update profile picture", "error");
