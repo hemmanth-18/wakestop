@@ -163,11 +163,16 @@ export default function ForgotPassword() {
             </div>
           )}
 
-          {/* Demonstration Notice Banner if Code Generated */}
-          {demoCode && step >= 2 && (
-            <div className="mb-4 rounded-xl border border-neon-gold/50 bg-neon-gold/10 p-3 text-xs text-neon-gold font-mono flex items-center justify-between">
-              <span>Demo Verification Code:</span>
-              <span className="font-bold text-sm bg-night-950 px-2 py-0.5 rounded border border-neon-gold">{demoCode}</span>
+          {/* Clean Email Sent Notice */}
+          {step === 2 && (
+            <div className="mb-5 rounded-2xl border border-neon-cyan/40 bg-night-900/90 p-4 shadow-[0_0_20px_rgba(0,240,255,0.2)] text-left flex items-start gap-3">
+              <span className="text-xl shrink-0">✉️</span>
+              <div className="text-xs space-y-1">
+                <p className="font-bold text-white text-sm">Verification Code Sent</p>
+                <p className="text-night-400 leading-relaxed">
+                  We sent a 6-digit verification code to <strong className="text-neon-cyan">{email}</strong>. Please check your email inbox and enter the code below.
+                </p>
+              </div>
             </div>
           )}
 

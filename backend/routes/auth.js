@@ -172,6 +172,8 @@ router.post("/change-password", requireAuth, async (req, res) => {
   }
 });
 
+import { sendResetCodeEmail } from "../services/emailService.js";
+
 // Forgot Password - Step 1: Request 6-digit code
 router.post("/forgot-password", async (req, res) => {
   try {
@@ -192,12 +194,11 @@ router.post("/forgot-password", async (req, res) => {
 
     await db.users.update(user.id, { resetCode: code, resetCodeExpiry: expiry });
 
-    console.log(`🔑 Verification Code for ${cleanEmail}: ${code}`);
+    // Send email dispatch
+    const emailResult = await sendResetCodeEmail(cleanEmail, code, user.name || "Commuter");
 
     return res.json({
-      message: "Verification code generated and sent to your email",
-      // Include code in response for demonstration / immediate testing
-      demoCode: code,
+      message: "Verification code sent to your email address",
     });
   } catch (err) {
     return res.status(500).json({ error: "Failed to generate verification code" });
