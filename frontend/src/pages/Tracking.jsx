@@ -149,7 +149,7 @@ export default function Tracking() {
 
       <AlarmSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
-      <div className="relative z-10 mx-auto max-w-4xl space-y-3 sm:space-y-4">
+      <div className="relative z-10 mx-auto max-w-xl lg:max-w-6xl xl:max-w-7xl space-y-3 sm:space-y-4">
 
         {/* ── Header Bar ── */}
         <div className="glass-panel-gold rounded-2xl p-4 sm:p-5">
@@ -197,153 +197,161 @@ export default function Tracking() {
           </div>
         )}
 
-        {/* ── AI Adaptive Profile Banner ── */}
-        <div className="glass-panel-gold rounded-2xl p-3.5 sm:p-4 border-neon-purple/40 bg-night-900/90 shadow-[0_0_20px_rgba(176,38,255,0.15)]">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neon-purple/20 text-neon-purple shadow-[0_0_15px_rgba(176,38,255,0.4)]">
-                <ZapIcon size={18} />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-neon-purple">
-                    AI Profile:
+        {/* ── Desktop 2-Column Dashboard Grid / Mobile Vertical Stack ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+          {/* Left Column: Prominent Live Interactive Map */}
+          <div className="lg:col-span-7 space-y-3">
+            <div className="h-[280px] sm:h-[380px] lg:h-[500px] xl:h-[540px] overflow-hidden rounded-3xl border border-neon-cyan/40 shadow-[0_0_30px_rgba(0,240,255,0.2)]">
+              <MapContainer
+                center={[trip.destination.lat, trip.destination.lng]}
+                zoom={12}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap contributors"
+                />
+                <Marker position={[trip.destination.lat, trip.destination.lng]} icon={stopSvgIcon}>
+                  <Popup>{trip.destination.name}</Popup>
+                </Marker>
+
+                {position && (
+                  <>
+                    <Marker position={[position.latitude, position.longitude]} icon={busSvgIcon}>
+                      <Popup>Your Live GPS Position</Popup>
+                    </Marker>
+
+                    {roadPolyline.length > 0 && (
+                      <Polyline
+                        positions={roadPolyline}
+                        pathOptions={{
+                          color: "#00F0FF",
+                          weight: 5,
+                          opacity: 0.9,
+                          lineCap: "round",
+                          lineJoin: "round",
+                        }}
+                      />
+                    )}
+
+                    <Recenter lat={position.latitude} lng={position.longitude} />
+                  </>
+                )}
+              </MapContainer>
+            </div>
+
+            <p className="text-center text-xs text-night-600 px-2 leading-relaxed">
+              Keep this screen visible — audio &amp; vibration trigger as you approach your stop.
+            </p>
+          </div>
+
+          {/* Right Column: Telemetry Cards & Controls */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* ── AI Adaptive Profile Banner ── */}
+            <div className="glass-panel-gold rounded-2xl p-3.5 sm:p-4 border-neon-purple/40 bg-night-900/90 shadow-[0_0_20px_rgba(176,38,255,0.15)]">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neon-purple/20 text-neon-purple shadow-[0_0_15px_rgba(176,38,255,0.4)]">
+                    <ZapIcon size={18} />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-neon-purple">
+                        AI Profile:
+                      </span>
+                      <span className="rounded-md bg-neon-purple/20 px-2 py-0.5 text-xs font-bold text-white">
+                        {adaptiveInfo.profile}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-night-400 leading-snug line-clamp-2 sm:line-clamp-none">
+                      {adaptiveInfo.explanation}
+                    </p>
+                  </div>
+                </div>
+                {/* Threshold badges */}
+                <div className="flex items-center gap-1.5 text-xs font-mono ml-12 sm:ml-0">
+                  <span className="rounded-lg bg-night-950 px-2 py-1 border border-neon-gold/50 text-neon-gold">
+                    {(activeThresholds.alarmM / 1000).toFixed(1)} km
                   </span>
-                  <span className="rounded-md bg-neon-purple/20 px-2 py-0.5 text-xs font-bold text-white">
-                    {adaptiveInfo.profile}
+                  <span className="rounded-lg bg-night-950 px-2 py-1 border border-alert-500/50 text-alert-500">
+                    {activeThresholds.criticalM} m
                   </span>
                 </div>
-                <p className="mt-0.5 text-xs text-night-400 leading-snug line-clamp-2 sm:line-clamp-none">
-                  {adaptiveInfo.explanation}
+              </div>
+            </div>
+
+            {/* ── Battery Risk Card ── */}
+            <BatteryRiskCard
+              etaMinutes={aiEta?.dynamicEtaMin || 60}
+              onSimulateEarlyAlarm={triggerEarlyBatteryAlarm}
+            />
+
+            {/* ── Metrics Grid: 1-col on mobile, 3-col on right panel ── */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {/* Distance */}
+              <div className="glass-panel rounded-2xl p-4 border-neon-cyan/30">
+                <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
+                  <NavigationIcon size={13} className="text-neon-cyan" />
+                  Distance
+                </p>
+                <p className="mt-2 font-mono text-2xl xl:text-3xl font-extrabold text-neon-cyan neon-text-cyan">
+                  {distance !== null ? formatDistance(distance) : "Acquiring…"}
+                </p>
+              </div>
+
+              {/* ETA */}
+              <div className="glass-panel rounded-2xl p-4 border-neon-gold/30">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
+                    <ClockIcon size={13} className="text-neon-gold" />
+                    AI ETA
+                  </p>
+                  <span className={`text-[10px] font-bold ${aiEta.trafficColor}`}>
+                    {aiEta.confidence}
+                  </span>
+                </div>
+                <p className="mt-2 font-mono text-2xl xl:text-3xl font-extrabold text-neon-gold neon-text-gold">
+                  {distance !== null ? `${aiEta.dynamicEtaMin} min` : "—"}
+                </p>
+                <p className={`mt-1 text-[11px] font-medium truncate ${aiEta.trafficColor}`}>
+                  {aiEta.trafficStatus}
+                </p>
+              </div>
+
+              {/* Speed & Sound */}
+              <div className="glass-panel rounded-2xl p-4 border-neon-purple/30">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
+                    <ZapIcon size={13} className="text-neon-purple" />
+                    Telemetry
+                  </p>
+                  <span className="text-[11px] font-mono text-neon-cyan font-bold">
+                    {aiEta.speedKmh} km/h
+                  </span>
+                </div>
+                <p className="mt-2 font-display text-xs xl:text-sm font-bold text-white flex flex-wrap items-center gap-1.5">
+                  <span className="truncate max-w-[90px]">{currentSoundObj?.name || "Cyber Siren"}</span>
+                  {vibrateActive ? (
+                    <span className="flex items-center gap-1 rounded-md bg-neon-cyan/20 px-1.5 py-0.5 text-[10px] text-neon-cyan whitespace-nowrap">
+                      Vib ON
+                    </span>
+                  ) : (
+                    <span className="rounded-md bg-night-800 px-1.5 py-0.5 text-[10px] text-night-500 whitespace-nowrap">
+                      Vib OFF
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
-            {/* Threshold badges */}
-            <div className="flex items-center gap-1.5 text-xs font-mono ml-12 sm:ml-0">
-              <span className="rounded-lg bg-night-950 px-2 py-1 border border-neon-gold/50 text-neon-gold">
-                {(activeThresholds.alarmM / 1000).toFixed(1)} km
-              </span>
-              <span className="rounded-lg bg-night-950 px-2 py-1 border border-alert-500/50 text-alert-500">
-                {activeThresholds.criticalM} m
-              </span>
-            </div>
+
+            <button
+              onClick={() => nav("/select-destination")}
+              className="w-full rounded-2xl border border-night-700 bg-night-900/60 py-4 font-display text-sm font-semibold text-night-500 hover:border-neon-cyan hover:text-white transition-all"
+            >
+              Change Destination / New Trip
+            </button>
           </div>
         </div>
-
-        {/* ── Battery Risk Card ── */}
-        <BatteryRiskCard
-          etaMinutes={aiEta?.dynamicEtaMin || 60}
-          onSimulateEarlyAlarm={triggerEarlyBatteryAlarm}
-        />
-
-        {/* ── Metrics Grid: 1-col on mobile, 3-col on sm+ ── */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {/* Distance */}
-          <div className="glass-panel rounded-2xl p-4 border-neon-cyan/30">
-            <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
-              <NavigationIcon size={13} className="text-neon-cyan" />
-              Distance
-            </p>
-            <p className="mt-2 font-mono text-3xl font-extrabold text-neon-cyan neon-text-cyan">
-              {distance !== null ? formatDistance(distance) : "Acquiring…"}
-            </p>
-          </div>
-
-          {/* ETA */}
-          <div className="glass-panel rounded-2xl p-4 border-neon-gold/30">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
-                <ClockIcon size={13} className="text-neon-gold" />
-                AI ETA
-              </p>
-              <span className={`text-[10px] font-bold ${aiEta.trafficColor}`}>
-                {aiEta.confidence}
-              </span>
-            </div>
-            <p className="mt-2 font-mono text-3xl font-extrabold text-neon-gold neon-text-gold">
-              {distance !== null ? `${aiEta.dynamicEtaMin} min` : "—"}
-            </p>
-            <p className={`mt-1 text-[11px] font-medium truncate ${aiEta.trafficColor}`}>
-              {aiEta.trafficStatus}
-            </p>
-          </div>
-
-          {/* Speed & Sound */}
-          <div className="glass-panel rounded-2xl p-4 border-neon-purple/30">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-night-500 flex items-center gap-1.5">
-                <ZapIcon size={13} className="text-neon-purple" />
-                Telemetry
-              </p>
-              <span className="text-[11px] font-mono text-neon-cyan font-bold">
-                {aiEta.speedKmh} km/h
-              </span>
-            </div>
-            <p className="mt-2 font-display text-sm font-bold text-white flex flex-wrap items-center gap-2">
-              <span className="truncate max-w-[120px]">{currentSoundObj?.name || "Cyber Siren"}</span>
-              {vibrateActive ? (
-                <span className="flex items-center gap-1 rounded-md bg-neon-cyan/20 px-2 py-0.5 text-xs text-neon-cyan whitespace-nowrap">
-                  Vibrate ON
-                </span>
-              ) : (
-                <span className="rounded-md bg-night-800 px-2 py-0.5 text-xs text-night-500 whitespace-nowrap">
-                  Vibrate OFF
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* ── Map — taller on mobile, fixed height on desktop ── */}
-        <div className="h-[55vw] min-h-[260px] max-h-[420px] sm:h-[420px] overflow-hidden rounded-3xl border border-neon-cyan/40 shadow-[0_0_30px_rgba(0,240,255,0.2)]">
-          <MapContainer
-            center={[trip.destination.lat, trip.destination.lng]}
-            zoom={12}
-            style={{ height: "100%", width: "100%" }}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="&copy; OpenStreetMap contributors"
-            />
-            <Marker position={[trip.destination.lat, trip.destination.lng]} icon={stopSvgIcon}>
-              <Popup>{trip.destination.name}</Popup>
-            </Marker>
-
-            {position && (
-              <>
-                <Marker position={[position.latitude, position.longitude]} icon={busSvgIcon}>
-                  <Popup>Your Live GPS Position</Popup>
-                </Marker>
-
-                {roadPolyline.length > 0 && (
-                  <Polyline
-                    positions={roadPolyline}
-                    pathOptions={{
-                      color: "#00F0FF",
-                      weight: 5,
-                      opacity: 0.9,
-                      lineCap: "round",
-                      lineJoin: "round",
-                    }}
-                  />
-                )}
-
-                <Recenter lat={position.latitude} lng={position.longitude} />
-              </>
-            )}
-          </MapContainer>
-        </div>
-
-        <p className="text-center text-xs text-night-600 px-2 leading-relaxed">
-          Keep this screen visible — audio &amp; vibration trigger as you approach your stop.
-        </p>
-
-        <button
-          onClick={() => nav("/select-destination")}
-          className="w-full rounded-2xl border border-night-700 bg-night-900/60 py-4 font-display text-sm font-semibold text-night-500 hover:border-neon-cyan hover:text-white transition-all"
-        >
-          Change Destination / New Trip
-        </button>
       </div>
     </div>
   );

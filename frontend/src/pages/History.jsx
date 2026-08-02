@@ -22,7 +22,7 @@ export default function History() {
     <div className="relative min-h-[calc(100vh-64px)] px-3 sm:px-4 py-6 sm:py-8">
       <ThunderNeonCanvas />
 
-      <div className="relative z-10 mx-auto max-w-xl">
+      <div className="relative z-10 mx-auto max-w-xl md:max-w-4xl lg:max-w-5xl">
         <div className="glass-panel-gold rounded-3xl p-5 sm:p-8">
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-night-700 pb-4 sm:pb-5">
@@ -56,55 +56,59 @@ export default function History() {
             </div>
           )}
 
-          {/* Trip list */}
-          <ul className="mt-5 space-y-3">
+          {/* Trip list — responsive 2-column grid on desktop */}
+          <ul className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {trips.map((trip) => (
               <li
                 key={trip.id}
-                className="rounded-2xl border border-night-700 bg-night-900/80 p-4 transition-all hover:border-neon-cyan/40"
+                className="rounded-2xl border border-night-700 bg-night-900/80 p-4 transition-all hover:border-neon-cyan/40 flex flex-col justify-between"
               >
-                {/* Top row: name + status */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <MapPinIcon size={16} className="shrink-0 text-neon-cyan" />
-                    <p className="font-display font-bold text-white text-sm sm:text-base truncate">
-                      {trip.destination.name}
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
-                      trip.status === "completed"
-                        ? "bg-neon-emerald/20 text-neon-emerald border border-neon-emerald/30"
-                        : "bg-neon-gold/20 text-neon-gold border border-neon-gold/30"
-                    }`}
-                  >
-                    {trip.status === "completed" ? (
-                      <><CheckIcon size={11} /> Done</>
-                    ) : (
-                      <><ZapIcon size={11} /> Active</>
-                    )}
-                  </span>
-                </div>
-
-                {/* Timestamp */}
-                <p className="mt-2 font-mono text-xs text-night-500 leading-relaxed">
-                  {new Date(trip.startTime).toLocaleString()}
-                  {trip.endTime && (
-                    <span className="block sm:inline">
-                      {" "}· Ended {new Date(trip.endTime).toLocaleString()}
+                <div>
+                  {/* Top row: name + status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPinIcon size={16} className="shrink-0 text-neon-cyan" />
+                      <p className="font-display font-bold text-white text-sm sm:text-base truncate">
+                        {trip.destination.name}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
+                        trip.status === "completed"
+                          ? "bg-neon-emerald/20 text-neon-emerald border border-neon-emerald/30"
+                          : "bg-neon-gold/20 text-neon-gold border border-neon-gold/30"
+                      }`}
+                    >
+                      {trip.status === "completed" ? (
+                        <><CheckIcon size={11} /> Done</>
+                      ) : (
+                        <><ZapIcon size={11} /> Active</>
+                      )}
                     </span>
-                  )}
-                </p>
+                  </div>
+
+                  {/* Timestamp */}
+                  <p className="mt-2 font-mono text-xs text-night-500 leading-relaxed">
+                    {new Date(trip.startTime).toLocaleString()}
+                    {trip.endTime && (
+                      <span className="block sm:inline">
+                        {" "}· Ended {new Date(trip.endTime).toLocaleString()}
+                      </span>
+                    )}
+                  </p>
+                </div>
 
                 {/* Resume link */}
                 {trip.status === "active" && (
-                  <Link
-                    to={`/tracking/${trip.id}`}
-                    state={{ trip }}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-neon-gold/10 border border-neon-gold/30 px-3 py-2 font-display text-xs font-bold text-neon-gold hover:bg-neon-gold/20 transition-all"
-                  >
-                    Resume Tracking →
-                  </Link>
+                  <div className="mt-4 pt-3 border-t border-night-800">
+                    <Link
+                      to={`/tracking/${trip.id}`}
+                      state={{ trip }}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-neon-gold/10 border border-neon-gold/30 px-3 py-2 font-display text-xs font-bold text-neon-gold hover:bg-neon-gold/20 transition-all"
+                    >
+                      Resume Tracking →
+                    </Link>
+                  </div>
                 )}
               </li>
             ))}
