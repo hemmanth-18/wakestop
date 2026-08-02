@@ -11,9 +11,11 @@ let supabaseClient = null;
 try {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (supabaseUrl && supabaseKey && typeof supabaseKey === "string" && supabaseKey.length > 20) {
+  if (supabaseUrl && supabaseKey && typeof supabaseKey === "string" && supabaseKey.startsWith("eyJ")) {
     supabaseClient = createClient(supabaseUrl, supabaseKey);
     console.log("⚡ Connected strictly to Supabase Cloud Database");
+  } else {
+    console.log("📁 Using Local Persistent Database Engine (local_db.json)");
   }
 } catch (e) {
   console.warn("Supabase init warning:", e?.message);
