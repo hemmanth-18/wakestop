@@ -53,4 +53,5 @@ wakestop/
 ## Contributors
 
 - [hemmanth-18](https://github.com/hemmanth-18) — Project creator
+- [tharikashri-19](https://github.com/tharikashri-19) — Project developer
 - [Pranesh-S-786](https://github.com/Pranesh-S-786) — Deployment & database fixes
