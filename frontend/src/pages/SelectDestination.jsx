@@ -5,7 +5,7 @@ import L from "leaflet";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
-import { SearchIcon, MapPinIcon, BusIcon, NavigationIcon, CheckIcon, SlidersIcon, ZapIcon, ClockIcon, HeartIcon } from "../components/Icons";
+import { SearchIcon, MapPinIcon, BusIcon, NavigationIcon, CheckIcon, SlidersIcon, ZapIcon, ClockIcon, HeartIcon, ChevronDownIcon } from "../components/Icons";
 import { analyzeTravelPatterns } from "../utils/aiEngine";
 
 // Custom Leaflet SVG marker for map picker
@@ -42,7 +42,12 @@ export default function SelectDestination() {
   const [results, setResults] = useState([]);
   const [allStops, setAllStops] = useState([]);
   const [selected, setSelected] = useState(null);
+  
+  // Separate suggestions & Accordion toggle state
+  const [favSuggestions, setFavSuggestions] = useState([]);
   const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [isFavAccordionOpen, setIsFavAccordionOpen] = useState(true);
+  const [isAiAccordionOpen, setIsAiAccordionOpen] = useState(true);
 
   // Custom Map Picker state
   const [mapPin, setMapPin] = useState(null);
@@ -69,37 +74,39 @@ export default function SelectDestination() {
   }, []);
 
   useEffect(() => {
-    const fav = user?.favoriteLocation;
-    const favItem = (fav && fav.name && fav.lat != null && fav.lng != null)
-      ? {
-          isFavorite: true,
-          name: fav.name,
-          lat: Number(fav.lat),
-          lng: Number(fav.lng),
-          tag: "FAVORITE LOCATION",
-          timeOfDay: "Saved Place",
-          count: "★",
-        }
-      : null;
+    const rawFavs = user?.favoriteLocations && user.favoriteLocations.length > 0
+      ? user.favoriteLocations
+      : (user?.favoriteLocation ? [user.favoriteLocation] : []);
+
+    const favItems = rawFavs
+      .filter((f) => f && f.name && f.lat != null && f.lng != null)
+      .map((f, idx) => ({
+        isFavorite: true,
+        name: f.name,
+        lat: Number(f.lat),
+        lng: Number(f.lng),
+        tag: `FAVORITE #${idx + 1}`,
+        timeOfDay: "Saved Place",
+        count: "★",
+      }));
+
+    setFavSuggestions(favItems);
 
     if (token) {
       api.tripHistory(token)
         .then((history) => {
           const suggestions = analyzeTravelPatterns(history);
-          const filtered = suggestions.filter(
-            (s) => !favItem || s.name.toLowerCase() !== favItem.name.toLowerCase()
-          );
-          setAiSuggestions(favItem ? [favItem, ...filtered] : filtered);
+          const favNames = new Set(favItems.map((fi) => fi.name.toLowerCase()));
+          const filtered = suggestions.filter((s) => !favNames.has(s.name.toLowerCase()));
+          setAiSuggestions(filtered);
         })
         .catch(() => {
-          if (favItem) setAiSuggestions([favItem]);
+          setAiSuggestions([]);
         });
-    } else if (favItem) {
-      setAiSuggestions([favItem]);
     } else {
       setAiSuggestions([]);
     }
-  }, [token, user?.favoriteLocation]);
+  }, [token, user?.favoriteLocations, user?.favoriteLocation]);
 
   const selectAiSuggestion = (sug) => {
     setMapCenter([sug.lat, sug.lng]);
@@ -325,59 +332,125 @@ export default function SelectDestination() {
             </div>
           </div>
 
-          {/* AI Smart Commute Suggestions Panel */}
-          {aiSuggestions.length > 0 && (
-            <div className="mt-5 rounded-2xl border border-neon-purple/50 bg-night-900/90 p-4 shadow-[0_0_20px_rgba(176,38,255,0.2)]">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-neon-purple flex items-center gap-1.5">
-                  <ZapIcon size={14} className="animate-pulse" /> AI Smart Travel Suggestions
-                </h3>
-                <span className="text-[11px] font-semibold text-night-400">Learned Commute Patterns</span>
-              </div>
-
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {aiSuggestions.map((sug, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => selectAiSuggestion(sug)}
-                    className={`group rounded-xl border p-3 text-left transition-all active:scale-98 ${
-                      sug.isFavorite
-                        ? "border-alert-500/70 bg-alert-500/10 shadow-[0_0_20px_rgba(255,46,85,0.25)] hover:border-alert-500 hover:bg-alert-500/20"
-                        : "border-night-700 bg-night-950/80 hover:border-neon-purple hover:bg-neon-purple/10 hover:shadow-[0_0_15px_rgba(176,38,255,0.3)]"
+          {/* Accordion 1: Saved Favorite Locations */}
+          {favSuggestions.length > 0 && (
+            <div className="mt-5 rounded-2xl border border-alert-500/50 bg-night-900/90 shadow-[0_0_20px_rgba(255,46,85,0.15)] overflow-hidden transition-all">
+              <button
+                type="button"
+                onClick={() => setIsFavAccordionOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between p-4 bg-night-950/60 hover:bg-alert-500/10 transition-colors text-left cursor-pointer select-none"
+              >
+                <div className="flex items-center gap-2">
+                  <HeartIcon size={16} className="text-alert-500 fill-alert-500 animate-pulse" />
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-alert-500">
+                    Saved Favorite Locations ({favSuggestions.length})
+                  </h3>
+                  <span className="rounded-full bg-alert-500/20 text-alert-500 px-2 py-0.5 text-[10px] font-bold">
+                    Quick Access
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-night-400 hidden sm:inline">
+                    {isFavAccordionOpen ? "Hide Favorites" : "Show Favorites"}
+                  </span>
+                  <ChevronDownIcon
+                    size={18}
+                    className={`text-alert-500 transition-transform duration-300 ${
+                      isFavAccordionOpen ? "rotate-180" : "rotate-0"
                     }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold truncate flex items-center gap-1 ${
-                          sug.isFavorite
-                            ? "bg-alert-500 text-white shadow-[0_0_10px_rgba(255,46,85,0.5)]"
-                            : "bg-neon-purple/20 text-neon-purple"
-                        }`}
+                  />
+                </div>
+              </button>
+
+              {isFavAccordionOpen && (
+                <div className="p-4 pt-2 border-t border-alert-500/20">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {favSuggestions.map((sug, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => selectAiSuggestion(sug)}
+                        className="group rounded-xl border border-alert-500/70 bg-alert-500/10 p-3 text-left transition-all active:scale-98 shadow-[0_0_15px_rgba(255,46,85,0.2)] hover:border-alert-500 hover:bg-alert-500/20"
                       >
-                        {sug.isFavorite && <HeartIcon size={11} className="fill-white" />}
-                        {sug.tag}
-                      </span>
-                    </div>
-                    <p
-                      className={`mt-2 text-xs font-bold transition-colors truncate flex items-center gap-1.5 ${
-                        sug.isFavorite
-                          ? "text-alert-500 group-hover:text-white"
-                          : "text-white group-hover:text-neon-purple"
-                      }`}
-                    >
-                      {sug.isFavorite && <HeartIcon size={13} className="text-alert-500 fill-alert-500 shrink-0" />}
-                      <span className="truncate">{sug.name}</span>
-                    </p>
-                    <div className="mt-1 flex items-center justify-between text-[10px] text-night-400 font-mono">
-                      <span>{sug.timeOfDay}</span>
-                      <span className={sug.isFavorite ? "text-alert-500 font-bold" : "text-neon-cyan"}>
-                        {sug.isFavorite ? "❤️ Saved Favorite" : `${sug.count} trip${sug.count > 1 ? "s" : ""}`}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
+                        <div className="flex items-center justify-between">
+                          <span className="rounded-md bg-alert-500 text-white px-2 py-0.5 text-[10px] font-bold truncate flex items-center gap-1 shadow-[0_0_10px_rgba(255,46,85,0.5)]">
+                            <HeartIcon size={11} className="fill-white" />
+                            {sug.tag}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs font-bold text-alert-500 group-hover:text-white transition-colors truncate flex items-center gap-1.5">
+                          <HeartIcon size={13} className="text-alert-500 fill-alert-500 shrink-0" />
+                          <span className="truncate">{sug.name}</span>
+                        </p>
+                        <div className="mt-1 flex items-center justify-between text-[10px] text-night-400 font-mono">
+                          <span>{sug.timeOfDay}</span>
+                          <span className="text-alert-500 font-bold">❤️ Favorite</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Accordion 2: AI Smart Travel Suggestions */}
+          {aiSuggestions.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-neon-purple/50 bg-night-900/90 shadow-[0_0_20px_rgba(176,38,255,0.15)] overflow-hidden transition-all">
+              <button
+                type="button"
+                onClick={() => setIsAiAccordionOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between p-4 bg-night-950/60 hover:bg-neon-purple/10 transition-colors text-left cursor-pointer select-none"
+              >
+                <div className="flex items-center gap-2">
+                  <ZapIcon size={16} className="text-neon-purple animate-pulse" />
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-neon-purple">
+                    AI Smart Travel Suggestions ({aiSuggestions.length})
+                  </h3>
+                  <span className="rounded-full bg-neon-purple/20 text-neon-purple px-2 py-0.5 text-[10px] font-bold">
+                    Learned Patterns
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-night-400 hidden sm:inline">
+                    {isAiAccordionOpen ? "Hide AI Suggestions" : "Show AI Suggestions"}
+                  </span>
+                  <ChevronDownIcon
+                    size={18}
+                    className={`text-neon-purple transition-transform duration-300 ${
+                      isAiAccordionOpen ? "rotate-180" : "rotate-0"
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {isAiAccordionOpen && (
+                <div className="p-4 pt-2 border-t border-neon-purple/20">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {aiSuggestions.map((sug, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => selectAiSuggestion(sug)}
+                        className="group rounded-xl border border-night-700 bg-night-950/80 p-3 text-left transition-all active:scale-98 hover:border-neon-purple hover:bg-neon-purple/10 hover:shadow-[0_0_15px_rgba(176,38,255,0.3)]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="rounded-md bg-neon-purple/20 text-neon-purple px-2 py-0.5 text-[10px] font-bold truncate">
+                            {sug.tag}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs font-bold text-white group-hover:text-neon-purple transition-colors truncate">
+                          {sug.name}
+                        </p>
+                        <div className="mt-1 flex items-center justify-between text-[10px] text-night-400 font-mono">
+                          <span>{sug.timeOfDay}</span>
+                          <span className="text-neon-cyan">{sug.count} trip{sug.count > 1 ? "s" : ""}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

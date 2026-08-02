@@ -181,8 +181,12 @@ export default function Profile() {
     }
   }
 
-  // Save Favorite Location
-  async function handleSaveFavorite(e) {
+  const favList = user?.favoriteLocations && user.favoriteLocations.length > 0
+    ? user.favoriteLocations
+    : (user?.favoriteLocation ? [user.favoriteLocation] : []);
+
+  // Add a Favorite Location (Max 3)
+  async function handleAddFavorite(e) {
     if (e) e.preventDefault();
     if (!favName.trim()) {
       showToast("Please enter a name for your favorite location", "error");
@@ -195,16 +199,30 @@ export default function Profile() {
       return;
     }
 
+    if (favList.length >= 3) {
+      showToast("Maximum of 3 favorite locations reached. Remove one first.", "error");
+      return;
+    }
+
+    const newFav = {
+      id: "fav_" + Date.now(),
+      name: favName.trim(),
+      lat,
+      lng,
+    };
+
+    const updatedList = [...favList, newFav];
+
     setIsSavingFav(true);
     try {
       await updateUserProfile({
-        favoriteLocation: {
-          name: favName.trim(),
-          lat,
-          lng,
-        },
+        favoriteLocations: updatedList,
+        favoriteLocation: updatedList[0],
       });
-      showToast("Favorite location saved successfully! ❤️", "success");
+      setFavName("");
+      setFavLat("");
+      setFavLng("");
+      showToast(`Favorite location "${newFav.name}" saved! ❤️ (${updatedList.length}/3)`, "success");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to save favorite location", "error");
     } finally {
@@ -212,14 +230,15 @@ export default function Profile() {
     }
   }
 
-  // Clear Favorite Location
-  async function handleRemoveFavorite() {
+  // Remove individual Favorite Location by index
+  async function handleRemoveFavoriteItem(indexToRemove) {
+    const updatedList = favList.filter((_, idx) => idx !== indexToRemove);
     setIsSavingFav(true);
     try {
-      await updateUserProfile({ favoriteLocation: null });
-      setFavName("");
-      setFavLat("");
-      setFavLng("");
+      await updateUserProfile({
+        favoriteLocations: updatedList,
+        favoriteLocation: updatedList[0] || null,
+      });
       showToast("Favorite location removed", "success");
     } catch (err) {
       showToast("Failed to remove favorite location", "error");
@@ -570,101 +589,144 @@ export default function Profile() {
               </form>
             </div>
 
-            {/* Favorite Location Card */}
+            {/* Favorite Locations Card (Max 3) */}
             <div className="glass-panel rounded-3xl p-6 border-alert-500/40 space-y-5">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-extrabold uppercase tracking-wider text-alert-500 flex items-center gap-2">
-                  <HeartIcon size={18} className="text-alert-500 fill-alert-500" /> Favorite Location
+                  <HeartIcon size={18} className="text-alert-500 fill-alert-500" /> Favorite Locations ({favList.length}/3)
                 </h2>
-                {user?.favoriteLocation && (
-                  <span className="rounded-full bg-alert-500/15 border border-alert-500/40 px-2.5 py-0.5 text-[10px] font-extrabold text-alert-500 uppercase tracking-wider">
-                    Active Saved
-                  </span>
-                )}
+                <span className="rounded-full bg-alert-500/15 border border-alert-500/40 px-2.5 py-0.5 text-[10px] font-extrabold text-alert-500 uppercase tracking-wider">
+                  {favList.length > 0 ? `${favList.length} Saved` : "Max 3"}
+                </span>
               </div>
 
               <p className="text-xs text-night-400 leading-relaxed">
-                Save your home, work, or frequent stop based on Latitude & Longitude. It will appear at the top of AI destination recommendations!
+                Save up to 3 favorite locations (Home, Work, Station, etc.). They will appear at the top of your AI travel suggestions!
               </p>
 
-              <form onSubmit={handleSaveFavorite} className="space-y-4">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-night-400">
-                    Location Title / Address Name
+              {/* List of Saved Favorites */}
+              {favList.length > 0 && (
+                <div className="space-y-2.5">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-night-400">
+                    Saved Favorite Spots:
                   </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Home, Work, Koramangala..."
-                    value={favName}
-                    onChange={(e) => setFavName(e.target.value)}
-                    className="w-full rounded-xl border border-night-700 bg-night-950 px-3.5 py-3 text-sm text-white outline-none focus:border-alert-500 focus:shadow-[0_0_15px_rgba(255,46,85,0.2)] transition-all"
-                  />
-                </div>
+                  {favList.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      className="flex items-center justify-between rounded-2xl border border-alert-500/40 bg-alert-500/10 p-3.5 shadow-[0_0_15px_rgba(255,46,85,0.1)]"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-alert-500 text-white shadow-[0_0_10px_rgba(255,46,85,0.5)]">
+                          <HeartIcon size={16} className="fill-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                            <span>{item.name}</span>
+                            <span className="rounded bg-alert-500/20 text-alert-500 px-1.5 py-0.2 text-[9px] font-mono">
+                              #{idx + 1}
+                            </span>
+                          </p>
+                          <p className="text-[10px] text-night-400 font-mono mt-0.5 truncate">
+                            Lat: {Number(item.lat).toFixed(4)}, Lng: {Number(item.lng).toFixed(4)}
+                          </p>
+                        </div>
+                      </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFavoriteItem(idx)}
+                        disabled={isSavingFav}
+                        className="rounded-xl border border-alert-500/40 bg-alert-500/20 px-3 py-1.5 text-xs font-extrabold text-alert-500 hover:bg-alert-500 hover:text-white transition-all cursor-pointer shrink-0 ml-2"
+                        title="Remove this favorite"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add New Favorite Form (if less than 3) */}
+              {favList.length < 3 ? (
+                <form onSubmit={handleAddFavorite} className="space-y-4 pt-2 border-t border-night-800">
+                  <p className="text-xs font-extrabold text-neon-cyan uppercase tracking-wider">
+                    Add New Favorite Spot ({favList.length + 1}/3):
+                  </p>
+
                   <div>
                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-night-400">
-                      Latitude (Lat)
+                      Location Title / Address Name
                     </label>
                     <input
-                      type="number"
-                      step="any"
+                      type="text"
                       required
-                      placeholder="e.g. 11.0168"
-                      value={favLat}
-                      onChange={(e) => setFavLat(e.target.value)}
-                      className="w-full rounded-xl border border-night-700 bg-night-950 px-3.5 py-3 text-sm text-white outline-none focus:border-alert-500 font-mono text-xs"
+                      placeholder="e.g. Home, Work, Gym, College..."
+                      value={favName}
+                      onChange={(e) => setFavName(e.target.value)}
+                      className="w-full rounded-xl border border-night-700 bg-night-950 px-3.5 py-3 text-sm text-white outline-none focus:border-alert-500 focus:shadow-[0_0_15px_rgba(255,46,85,0.2)] transition-all"
                     />
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-night-400">
-                      Longitude (Lng)
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      required
-                      placeholder="e.g. 76.9558"
-                      value={favLng}
-                      onChange={(e) => setFavLng(e.target.value)}
-                      className="w-full rounded-xl border border-night-700 bg-night-950 px-3.5 py-3 text-sm text-white outline-none focus:border-alert-500 font-mono text-xs"
-                    />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-night-400">
+                        Latitude (Lat)
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        required
+                        placeholder="e.g. 11.0168"
+                        value={favLat}
+                        onChange={(e) => setFavLat(e.target.value)}
+                        className="w-full rounded-xl border border-night-700 bg-night-950 px-3.5 py-3 text-sm text-white outline-none focus:border-alert-500 font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-night-400">
+                        Longitude (Lng)
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        required
+                        placeholder="e.g. 76.9558"
+                        value={favLng}
+                        onChange={(e) => setFavLng(e.target.value)}
+                        className="w-full rounded-xl border border-night-700 bg-night-950 px-3.5 py-3 text-sm text-white outline-none focus:border-alert-500 font-mono text-xs"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={handleUseCurrentGps}
-                  disabled={isGettingGps}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-neon-cyan/40 bg-neon-cyan/10 py-2.5 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  <MapPinIcon size={14} />
-                  {isGettingGps ? "Acquiring GPS location…" : "Use Current GPS Location"}
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentGps}
+                    disabled={isGettingGps}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-neon-cyan/40 bg-neon-cyan/10 py-2.5 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <MapPinIcon size={14} />
+                    {isGettingGps ? "Acquiring GPS location…" : "Use Current GPS Location"}
+                  </button>
 
-                <div className="flex gap-2 pt-1">
                   <button
                     type="submit"
                     disabled={isSavingFav}
-                    className="flex-1 rounded-xl bg-alert-500 py-3 font-display font-bold text-white shadow-[0_0_15px_rgba(255,46,85,0.3)] hover:brightness-110 active:scale-98 transition-all disabled:opacity-60 cursor-pointer flex items-center justify-center gap-1.5"
+                    className="w-full rounded-xl bg-alert-500 py-3 font-display font-bold text-white shadow-[0_0_15px_rgba(255,46,85,0.3)] hover:brightness-110 active:scale-98 transition-all disabled:opacity-60 cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <HeartIcon size={16} className="fill-white" />
-                    {isSavingFav ? "Saving…" : "Save Favorite"}
+                    {isSavingFav ? "Saving…" : `+ Add Favorite Location (${favList.length + 1}/3)`}
                   </button>
-
-                  {user?.favoriteLocation && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveFavorite}
-                      disabled={isSavingFav}
-                      className="rounded-xl border border-night-700 bg-night-950 px-4 py-3 text-xs font-bold text-night-400 hover:text-alert-500 hover:border-alert-500/50 transition-all cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  )}
+                </form>
+              ) : (
+                <div className="rounded-2xl border border-neon-gold/40 bg-neon-gold/10 p-3.5 text-center">
+                  <p className="text-xs font-bold text-neon-gold">
+                    ★ Maximum 3 Favorite Locations Reached (3/3)
+                  </p>
+                  <p className="text-[11px] text-night-400 mt-1">
+                    Delete one of your saved locations above if you wish to add a new favorite.
+                  </p>
                 </div>
-              </form>
+              )}
             </div>
           </div>
         </div>

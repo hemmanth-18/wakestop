@@ -58,6 +58,37 @@ function saveLocalStore() {
   }
 }
 
+function parseFavoriteLocations(userRow) {
+  if (!userRow) return [];
+
+  let raw = userRow.favorite_locations || userRow.favoriteLocations || userRow.favorite_location || userRow.favoriteLocation;
+
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch (_) {}
+  }
+
+  if (Array.isArray(raw)) {
+    return raw.filter((item) => item && typeof item === "object" && item.name);
+  }
+
+  if (raw && typeof raw === "object") {
+    if (raw.favourite_1 || raw.favorite_1 || raw.favourite_2 || raw.favorite_2) {
+      const list = [];
+      if (raw.favourite_1 || raw.favorite_1) list.push(raw.favourite_1 || raw.favorite_1);
+      if (raw.favourite_2 || raw.favorite_2) list.push(raw.favourite_2 || raw.favorite_2);
+      if (raw.favourite_3 || raw.favorite_3) list.push(raw.favourite_3 || raw.favorite_3);
+      return list;
+    }
+    if (raw.name && raw.lat != null) {
+      return [raw];
+    }
+  }
+
+  return [];
+}
+
 export const db = {
   users: {
     findByEmail: async (email) => {
@@ -78,13 +109,15 @@ export const db = {
 
           const userRow = data && data.length > 0 ? data[0] : null;
           if (userRow) {
+            const favList = parseFavoriteLocations(userRow);
             const userObj = {
               id: userRow.id,
               name: userRow.name,
               email: userRow.email,
               passwordHash: userRow.password_hash || userRow.passwordHash,
               profileImage: userRow.profile_image || userRow.profileImage || "",
-              favoriteLocation: userRow.favorite_location || userRow.favoriteLocation || null,
+              favoriteLocations: favList,
+              favoriteLocation: userRow.favorite_location || userRow.favoriteLocation || (favList[0] || null),
               resetCode: userRow.reset_code || userRow.resetCode || null,
               resetCodeExpiry: userRow.reset_code_expiry || userRow.resetCodeExpiry || null,
               createdAt: userRow.created_at || userRow.createdAt,
@@ -106,7 +139,16 @@ export const db = {
       }
 
       const local = (localStore.users || []).find((u) => u && typeof u.email === "string" && u.email.toLowerCase() === targetEmail);
-      return local ? { ...local, passwordHash: local.passwordHash || local.password_hash } : null;
+      if (local) {
+        const favList = parseFavoriteLocations(local);
+        return {
+          ...local,
+          passwordHash: local.passwordHash || local.password_hash,
+          favoriteLocations: favList,
+          favoriteLocation: local.favoriteLocation || (favList[0] || null),
+        };
+      }
+      return null;
     },
 
     findById: async (id) => {
@@ -126,13 +168,15 @@ export const db = {
 
           const userRow = data && data.length > 0 ? data[0] : null;
           if (userRow) {
+            const favList = parseFavoriteLocations(userRow);
             const userObj = {
               id: userRow.id,
               name: userRow.name,
               email: userRow.email,
               passwordHash: userRow.password_hash || userRow.passwordHash,
               profileImage: userRow.profile_image || userRow.profileImage || "",
-              favoriteLocation: userRow.favorite_location || userRow.favoriteLocation || null,
+              favoriteLocations: favList,
+              favoriteLocation: userRow.favorite_location || userRow.favoriteLocation || (favList[0] || null),
               resetCode: userRow.reset_code || userRow.resetCode || null,
               resetCodeExpiry: userRow.reset_code_expiry || userRow.resetCodeExpiry || null,
               createdAt: userRow.created_at || userRow.createdAt,
@@ -151,7 +195,15 @@ export const db = {
         }
       }
       const local = (localStore.users || []).find((u) => u && u.id === id);
-      return local || null;
+      if (local) {
+        const favList = parseFavoriteLocations(local);
+        return {
+          ...local,
+          favoriteLocations: favList,
+          favoriteLocation: local.favoriteLocation || (favList[0] || null),
+        };
+      }
+      return null;
     },
 
     insert: async (user) => {
@@ -223,7 +275,11 @@ export const db = {
           if (patch.name !== undefined) updateObj.name = patch.name;
           if (patch.passwordHash !== undefined) updateObj.password_hash = patch.passwordHash;
           if (patch.profileImage !== undefined) updateObj.profile_image = patch.profileImage;
-          if (patch.favoriteLocation !== undefined) updateObj.favorite_location = patch.favoriteLocation;
+          if (patch.favoriteLocations !== undefined) {
+            updateObj.favorite_location = patch.favoriteLocations;
+          } else if (patch.favoriteLocation !== undefined) {
+            updateObj.favorite_location = patch.favoriteLocation;
+          }
           if (patch.resetCode !== undefined) updateObj.reset_code = patch.resetCode;
           if (patch.resetCodeExpiry !== undefined) updateObj.reset_code_expiry = patch.resetCodeExpiry;
           updateObj.updated_at = new Date().toISOString();
@@ -235,17 +291,8 @@ export const db = {
             .select()
             .maybeSingle();
 
-          // Retry without favorite_location if column does not exist in Supabase table
-          if (error && patch.favoriteLocation !== undefined) {
-            console.warn("Supabase update notice (retrying without favorite_location):", error.message);
-            delete updateObj.favorite_location;
-            const retryRes = await supabase
-              .from("users")
-              .update(updateObj)
-              .eq("id", id)
-              .select()
-              .maybeSingle();
-            data = retryRes.data;
+          if (error) {
+            console.warn("Supabase update notice:", error.message);
           }
 
           if (!data && patch.email) {
@@ -260,13 +307,17 @@ export const db = {
 
           if (data) {
             console.log("✅ Supabase user updated successfully for id:", id || data.id);
+            const favList = patch.favoriteLocations !== undefined
+              ? patch.favoriteLocations
+              : parseFavoriteLocations(data);
             updatedUser = {
               id: data.id,
               name: data.name,
               email: data.email,
               passwordHash: data.password_hash || data.passwordHash,
               profileImage: data.profile_image || data.profileImage || "",
-              favoriteLocation: data.favorite_location || data.favoriteLocation || patch.favoriteLocation || null,
+              favoriteLocations: favList,
+              favoriteLocation: data.favorite_location || data.favoriteLocation || (favList[0] || null),
               resetCode: data.reset_code || data.resetCode || null,
               resetCodeExpiry: data.reset_code_expiry || data.resetCodeExpiry || null,
               createdAt: data.created_at || data.createdAt,

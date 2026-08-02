@@ -79,7 +79,8 @@ const handleLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         profileImage: user.profileImage || "",
-        favoriteLocation: user.favoriteLocation || null,
+        favoriteLocations: user.favoriteLocations || (user.favoriteLocation ? [user.favoriteLocation] : []),
+        favoriteLocation: user.favoriteLocation || (user.favoriteLocations?.[0] || null),
         createdAt: user.createdAt,
       },
     });
@@ -102,7 +103,8 @@ router.get("/me", requireAuth, async (req, res) => {
         name: user.name,
         email: user.email,
         profileImage: user.profileImage || "",
-        favoriteLocation: user.favoriteLocation || null,
+        favoriteLocations: user.favoriteLocations || (user.favoriteLocation ? [user.favoriteLocation] : []),
+        favoriteLocation: user.favoriteLocation || (user.favoriteLocations?.[0] || null),
         createdAt: user.createdAt,
       },
     });
@@ -114,7 +116,7 @@ router.get("/me", requireAuth, async (req, res) => {
 // Update profile (username / profile picture / favorite location)
 router.put("/profile", requireAuth, async (req, res) => {
   try {
-    const { name, profileImage, favoriteLocation } = req.body || {};
+    const { name, profileImage, favoriteLocation, favoriteLocations } = req.body || {};
     const patch = {};
     if (typeof name === "string" && name.trim()) {
       patch.name = name.trim();
@@ -122,8 +124,12 @@ router.put("/profile", requireAuth, async (req, res) => {
     if (profileImage !== undefined && typeof profileImage === "string") {
       patch.profileImage = profileImage;
     }
-    if (favoriteLocation !== undefined) {
+    if (favoriteLocations !== undefined && Array.isArray(favoriteLocations)) {
+      patch.favoriteLocations = favoriteLocations.slice(0, 3);
+      patch.favoriteLocation = favoriteLocations[0] || null;
+    } else if (favoriteLocation !== undefined) {
       patch.favoriteLocation = favoriteLocation;
+      patch.favoriteLocations = favoriteLocation ? [favoriteLocation] : [];
     }
 
     const updated = await db.users.update(req.userId, patch);
@@ -137,7 +143,8 @@ router.put("/profile", requireAuth, async (req, res) => {
         name: updated.name,
         email: updated.email,
         profileImage: updated.profileImage || "",
-        favoriteLocation: updated.favoriteLocation || null,
+        favoriteLocations: updated.favoriteLocations || (updated.favoriteLocation ? [updated.favoriteLocation] : []),
+        favoriteLocation: updated.favoriteLocation || (updated.favoriteLocations?.[0] || null),
         createdAt: updated.createdAt,
       },
     });
