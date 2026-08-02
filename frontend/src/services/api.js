@@ -60,6 +60,8 @@ export const api = {
   endTrip: (token, tripId, wakeResponseSec) =>
     request(`/trips/${tripId}/end`, { method: "POST", token, body: { wakeResponseSec } }),
 
+  tripHistory: (token) => request("/trips/history", { token }),
+
   getProfile: (token) => request("/auth/me", { token }),
 
   updateProfile: (token, patch) =>

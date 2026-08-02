@@ -54,7 +54,7 @@ export default function Profile() {
   const newStrength = getPasswordStrength(newPassword);
   const isMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
 
-  // Image Upload Handler (convert to Base64 data URL)
+  // Image Upload Handler (convert & resize to optimized Base64 JPEG)
   function handleImageChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -63,20 +63,46 @@ export default function Profile() {
       showToast("Please select a valid image file", "error");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast("Image file size must be less than 5MB", "error");
+    if (file.size > 8 * 1024 * 1024) {
+      showToast("Image file size must be less than 8MB", "error");
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result;
-      try {
-        await updateUserProfile({ profileImage: base64 });
-        showToast("Profile picture updated successfully!", "success");
-      } catch (err) {
-        showToast(err instanceof Error ? err.message : "Failed to update profile picture", "error");
-      }
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
+
+        try {
+          await updateUserProfile({ profileImage: compressedBase64 });
+          showToast("Profile picture updated successfully!", "success");
+        } catch (err) {
+          showToast(err instanceof Error ? err.message : "Failed to update profile picture", "error");
+        }
+      };
+      img.src = event.target.result;
     };
     reader.readAsDataURL(file);
   }
