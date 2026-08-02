@@ -2,6 +2,8 @@
 
 > Never miss your bus stop again.
 
+🌐 **Live Web App**: [https://wakestop.vercel.app](https://wakestop.vercel.app)
+
 WakeStop tracks your live GPS position on long-distance bus journeys and wakes you with an escalating alarm as your stop approaches — designed for the TNSTC/SETC "I fell asleep on the overnight bus" problem.
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=flat-square)

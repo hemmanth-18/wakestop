@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "WakeStop",
+    "slug": "wakestop-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b0f19",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["location", "audio", "fetch", "remote-notification"],
+        "NSLocationWhenInUseUsageDescription": "WakeStop requires your live GPS location to calculate distance to your transit destination and alert you before your stop.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "WakeStop tracks location in the background to wake you up before you miss your stop even when your phone is asleep.",
+        "NSLocationAlwaysUsageDescription": "WakeStop tracks location in the background to wake you up before your destination."
+      }
+    },
+    "android": {
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "WakeStop tracks location in the background to alert you before your destination stop."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#6366f1"
+        }
+      ]
+    ]
+  }
+}
