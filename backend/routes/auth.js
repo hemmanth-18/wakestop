@@ -79,6 +79,7 @@ const handleLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         profileImage: user.profileImage || "",
+        favoriteLocation: user.favoriteLocation || null,
         createdAt: user.createdAt,
       },
     });
@@ -101,6 +102,7 @@ router.get("/me", requireAuth, async (req, res) => {
         name: user.name,
         email: user.email,
         profileImage: user.profileImage || "",
+        favoriteLocation: user.favoriteLocation || null,
         createdAt: user.createdAt,
       },
     });
@@ -109,16 +111,19 @@ router.get("/me", requireAuth, async (req, res) => {
   }
 });
 
-// Update profile (username / profile picture)
+// Update profile (username / profile picture / favorite location)
 router.put("/profile", requireAuth, async (req, res) => {
   try {
-    const { name, profileImage } = req.body || {};
+    const { name, profileImage, favoriteLocation } = req.body || {};
     const patch = {};
     if (typeof name === "string" && name.trim()) {
       patch.name = name.trim();
     }
     if (profileImage !== undefined && typeof profileImage === "string") {
       patch.profileImage = profileImage;
+    }
+    if (favoriteLocation !== undefined) {
+      patch.favoriteLocation = favoriteLocation;
     }
 
     const updated = await db.users.update(req.userId, patch);
@@ -132,6 +137,7 @@ router.put("/profile", requireAuth, async (req, res) => {
         name: updated.name,
         email: updated.email,
         profileImage: updated.profileImage || "",
+        favoriteLocation: updated.favoriteLocation || null,
         createdAt: updated.createdAt,
       },
     });

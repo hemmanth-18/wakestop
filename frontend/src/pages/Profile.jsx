@@ -14,6 +14,8 @@ import {
   EyeOffIcon,
   AlertIcon,
   ClockIcon,
+  HeartIcon,
+  MapPinIcon,
 } from "../components/Icons";
 
 function getPasswordStrength(pass) {
@@ -38,6 +40,13 @@ export default function Profile() {
   // Profile Edit State
   const [username, setUsername] = useState(user?.name || "");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  // Favorite Location State
+  const [favName, setFavName] = useState(user?.favoriteLocation?.name || "");
+  const [favLat, setFavLat] = useState(user?.favoriteLocation?.lat != null ? String(user.favoriteLocation.lat) : "");
+  const [favLng, setFavLng] = useState(user?.favoriteLocation?.lng != null ? String(user.favoriteLocation.lng) : "");
+  const [isSavingFav, setIsSavingFav] = useState(false);
+  const [isGettingGps, setIsGettingGps] = useState(false);
 
   // Password Change State
   const [currentPassword, setCurrentPassword] = useState("");
@@ -170,6 +179,91 @@ export default function Profile() {
     } finally {
       setIsChangingPassword(false);
     }
+  }
+
+  // Save Favorite Location
+  async function handleSaveFavorite(e) {
+    if (e) e.preventDefault();
+    if (!favName.trim()) {
+      showToast("Please enter a name for your favorite location", "error");
+      return;
+    }
+    const lat = parseFloat(favLat);
+    const lng = parseFloat(favLng);
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      showToast("Please enter valid Latitude (-90 to 90) and Longitude (-180 to 180)", "error");
+      return;
+    }
+
+    setIsSavingFav(true);
+    try {
+      await updateUserProfile({
+        favoriteLocation: {
+          name: favName.trim(),
+          lat,
+          lng,
+        },
+      });
+      showToast("Favorite location saved successfully! ❤️", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to save favorite location", "error");
+    } finally {
+      setIsSavingFav(false);
+    }
+  }
+
+  // Clear Favorite Location
+  async function handleRemoveFavorite() {
+    setIsSavingFav(true);
+    try {
+      await updateUserProfile({ favoriteLocation: null });
+      setFavName("");
+      setFavLat("");
+      setFavLng("");
+      showToast("Favorite location removed", "success");
+    } catch (err) {
+      showToast("Failed to remove favorite location", "error");
+    } finally {
+      setIsSavingFav(false);
+    }
+  }
+
+  // Use Current GPS Location
+  function handleUseCurrentGps() {
+    if (!("geolocation" in navigator)) {
+      showToast("Geolocation is not supported by your browser", "error");
+      return;
+    }
+    setIsGettingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        setFavLat(lat);
+        setFavLng(lng);
+        showToast(`Acquired location: Lat ${lat}, Lng ${lng}`, "success");
+
+        if (!favName.trim()) {
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.display_name) {
+                const parts = data.display_name.split(",");
+                const shortName = parts.slice(0, 2).join(",").trim();
+                if (shortName) setFavName(shortName);
+              }
+            }
+          } catch (_) {}
+        }
+        setIsGettingGps(false);
+      },
+      (err) => {
+        showToast("Could not retrieve current location: " + err.message, "error");
+        setIsGettingGps(false);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
   }
 
   // Handle Delete All History Confirmation
@@ -473,6 +567,103 @@ export default function Profile() {
                 >
                   {isChangingPassword ? "Updating Password…" : "Update Password"}
                 </button>
+              </form>
+            </div>
+
+            {/* Favorite Location Card */}
+            <div className="glass-panel rounded-3xl p-6 border-alert-500/40 space-y-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-extrabold uppercase tracking-wider text-alert-500 flex items-center gap-2">
+                  <HeartIcon size={18} className="text-alert-500 fill-alert-500" /> Favorite Location
+                </h2>
+                {user?.favoriteLocation && (
+                  <span className="rounded-full bg-alert-500/15 border border-alert-500/40 px-2.5 py-0.5 text-[10px] font-extrabold text-alert-500 uppercase tracking-wider">
+                    Active Saved
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-night-400 leading-relaxed">
+                Save your home, work, or frequent stop based on Latitude & Longitude. It will appear at the top of AI destination recommendations!
+              </p>
+
+              <form onSubmit={handleSaveFavorite} className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-night-400">
+                    Location Title / Address Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Home, Work, Koramangala..."
+                    value={favName}
+                    onChange={(e) => setFavName(e.target.value)}
+                    className="w-full rounded-xl border border-night-700 bg-night-950 px-3.5 py-3 text-sm text-white outline-none focus:border-alert-500 focus:shadow-[0_0_15px_rgba(255,46,85,0.2)] transition-all"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-night-400">
+                      Latitude (Lat)
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      placeholder="e.g. 11.0168"
+                      value={favLat}
+                      onChange={(e) => setFavLat(e.target.value)}
+                      className="w-full rounded-xl border border-night-700 bg-night-950 px-3.5 py-3 text-sm text-white outline-none focus:border-alert-500 font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-night-400">
+                      Longitude (Lng)
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      placeholder="e.g. 76.9558"
+                      value={favLng}
+                      onChange={(e) => setFavLng(e.target.value)}
+                      className="w-full rounded-xl border border-night-700 bg-night-950 px-3.5 py-3 text-sm text-white outline-none focus:border-alert-500 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleUseCurrentGps}
+                  disabled={isGettingGps}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-neon-cyan/40 bg-neon-cyan/10 py-2.5 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <MapPinIcon size={14} />
+                  {isGettingGps ? "Acquiring GPS location…" : "Use Current GPS Location"}
+                </button>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="submit"
+                    disabled={isSavingFav}
+                    className="flex-1 rounded-xl bg-alert-500 py-3 font-display font-bold text-white shadow-[0_0_15px_rgba(255,46,85,0.3)] hover:brightness-110 active:scale-98 transition-all disabled:opacity-60 cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <HeartIcon size={16} className="fill-white" />
+                    {isSavingFav ? "Saving…" : "Save Favorite"}
+                  </button>
+
+                  {user?.favoriteLocation && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveFavorite}
+                      disabled={isSavingFav}
+                      className="rounded-xl border border-night-700 bg-night-950 px-4 py-3 text-xs font-bold text-night-400 hover:text-alert-500 hover:border-alert-500/50 transition-all cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           </div>

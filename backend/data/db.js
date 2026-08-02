@@ -84,6 +84,7 @@ export const db = {
               email: userRow.email,
               passwordHash: userRow.password_hash || userRow.passwordHash,
               profileImage: userRow.profile_image || userRow.profileImage || "",
+              favoriteLocation: userRow.favorite_location || userRow.favoriteLocation || null,
               resetCode: userRow.reset_code || userRow.resetCode || null,
               resetCodeExpiry: userRow.reset_code_expiry || userRow.resetCodeExpiry || null,
               createdAt: userRow.created_at || userRow.createdAt,
@@ -131,6 +132,7 @@ export const db = {
               email: userRow.email,
               passwordHash: userRow.password_hash || userRow.passwordHash,
               profileImage: userRow.profile_image || userRow.profileImage || "",
+              favoriteLocation: userRow.favorite_location || userRow.favoriteLocation || null,
               resetCode: userRow.reset_code || userRow.resetCode || null,
               resetCodeExpiry: userRow.reset_code_expiry || userRow.resetCodeExpiry || null,
               createdAt: userRow.created_at || userRow.createdAt,
@@ -221,6 +223,7 @@ export const db = {
           if (patch.name !== undefined) updateObj.name = patch.name;
           if (patch.passwordHash !== undefined) updateObj.password_hash = patch.passwordHash;
           if (patch.profileImage !== undefined) updateObj.profile_image = patch.profileImage;
+          if (patch.favoriteLocation !== undefined) updateObj.favorite_location = patch.favoriteLocation;
           if (patch.resetCode !== undefined) updateObj.reset_code = patch.resetCode;
           if (patch.resetCodeExpiry !== undefined) updateObj.reset_code_expiry = patch.resetCodeExpiry;
           updateObj.updated_at = new Date().toISOString();
@@ -232,6 +235,19 @@ export const db = {
             .select()
             .maybeSingle();
 
+          // Retry without favorite_location if column does not exist in Supabase table
+          if (error && patch.favoriteLocation !== undefined) {
+            console.warn("Supabase update notice (retrying without favorite_location):", error.message);
+            delete updateObj.favorite_location;
+            const retryRes = await supabase
+              .from("users")
+              .update(updateObj)
+              .eq("id", id)
+              .select()
+              .maybeSingle();
+            data = retryRes.data;
+          }
+
           if (!data && patch.email) {
             const fallbackRes = await supabase
               .from("users")
@@ -242,10 +258,6 @@ export const db = {
             data = fallbackRes.data;
           }
 
-          if (error) {
-            console.warn("Supabase update user notice:", error.message);
-          }
-
           if (data) {
             console.log("✅ Supabase user updated successfully for id:", id || data.id);
             updatedUser = {
@@ -254,6 +266,7 @@ export const db = {
               email: data.email,
               passwordHash: data.password_hash || data.passwordHash,
               profileImage: data.profile_image || data.profileImage || "",
+              favoriteLocation: data.favorite_location || data.favoriteLocation || patch.favoriteLocation || null,
               resetCode: data.reset_code || data.resetCode || null,
               resetCodeExpiry: data.reset_code_expiry || data.resetCodeExpiry || null,
               createdAt: data.created_at || data.createdAt,
@@ -264,10 +277,11 @@ export const db = {
               (u) => u && (u.id === data.id || (typeof u.email === "string" && u.email.toLowerCase() === data.email.toLowerCase()))
             );
             if (idx !== -1) {
-              localStore.users[idx] = updatedUser;
+              localStore.users[idx] = { ...localStore.users[idx], ...updatedUser };
             } else {
               localStore.users.push(updatedUser);
             }
+            saveLocalStore();
             return updatedUser;
           }
         } catch (e) {
@@ -275,9 +289,19 @@ export const db = {
         }
       }
 
-      const idx = localStore.users.findIndex(
+      if (updatedUser) return updatedUser;
+
+      let idx = localStore.users.findIndex(
         (u) => u && (u.id === id || (patch.email && typeof u.email === "string" && u.email.toLowerCase() === patch.email.toLowerCase()))
       );
+
+      if (idx === -1 && id) {
+        const fetched = await db.users.findById(id);
+        if (fetched) {
+          idx = localStore.users.findIndex((u) => u && u.id === id);
+        }
+      }
+
       if (idx !== -1) {
         localStore.users[idx] = {
           ...localStore.users[idx],
@@ -288,7 +312,7 @@ export const db = {
         return localStore.users[idx];
       }
 
-      return updatedUser;
+      return null;
     },
   },
 

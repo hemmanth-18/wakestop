@@ -5,7 +5,7 @@ import L from "leaflet";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
-import { SearchIcon, MapPinIcon, BusIcon, NavigationIcon, CheckIcon, SlidersIcon, ZapIcon, ClockIcon } from "../components/Icons";
+import { SearchIcon, MapPinIcon, BusIcon, NavigationIcon, CheckIcon, SlidersIcon, ZapIcon, ClockIcon, HeartIcon } from "../components/Icons";
 import { analyzeTravelPatterns } from "../utils/aiEngine";
 
 // Custom Leaflet SVG marker for map picker
@@ -34,7 +34,7 @@ function MapController({ center, zoom }) {
 }
 
 export default function SelectDestination() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const nav = useNavigate();
 
   const [mode, setMode] = useState("map");
@@ -69,15 +69,37 @@ export default function SelectDestination() {
   }, []);
 
   useEffect(() => {
+    const fav = user?.favoriteLocation;
+    const favItem = (fav && fav.name && fav.lat != null && fav.lng != null)
+      ? {
+          isFavorite: true,
+          name: fav.name,
+          lat: Number(fav.lat),
+          lng: Number(fav.lng),
+          tag: "FAVORITE LOCATION",
+          timeOfDay: "Saved Place",
+          count: "★",
+        }
+      : null;
+
     if (token) {
       api.tripHistory(token)
         .then((history) => {
           const suggestions = analyzeTravelPatterns(history);
-          setAiSuggestions(suggestions);
+          const filtered = suggestions.filter(
+            (s) => !favItem || s.name.toLowerCase() !== favItem.name.toLowerCase()
+          );
+          setAiSuggestions(favItem ? [favItem, ...filtered] : filtered);
         })
-        .catch(() => {});
+        .catch(() => {
+          if (favItem) setAiSuggestions([favItem]);
+        });
+    } else if (favItem) {
+      setAiSuggestions([favItem]);
+    } else {
+      setAiSuggestions([]);
     }
-  }, [token]);
+  }, [token, user?.favoriteLocation]);
 
   const selectAiSuggestion = (sug) => {
     setMapCenter([sug.lat, sug.lng]);
@@ -88,7 +110,11 @@ export default function SelectDestination() {
     setCustomName(sug.name);
     setSelected(null);
     setMode("map");
-    setStatusMessage(`Selected AI Learned Suggestion: "${sug.name}" (${sug.timeOfDay})`);
+    if (sug.isFavorite) {
+      setStatusMessage(`Selected Favorite Location ❤️: "${sug.name}"`);
+    } else {
+      setStatusMessage(`Selected AI Learned Suggestion: "${sug.name}" (${sug.timeOfDay})`);
+    }
   };
 
   useEffect(() => {
@@ -315,19 +341,39 @@ export default function SelectDestination() {
                     key={i}
                     type="button"
                     onClick={() => selectAiSuggestion(sug)}
-                    className="group rounded-xl border border-night-700 bg-night-950/80 p-3 text-left transition-all hover:border-neon-purple hover:bg-neon-purple/10 hover:shadow-[0_0_15px_rgba(176,38,255,0.3)] active:scale-98"
+                    className={`group rounded-xl border p-3 text-left transition-all active:scale-98 ${
+                      sug.isFavorite
+                        ? "border-alert-500/70 bg-alert-500/10 shadow-[0_0_20px_rgba(255,46,85,0.25)] hover:border-alert-500 hover:bg-alert-500/20"
+                        : "border-night-700 bg-night-950/80 hover:border-neon-purple hover:bg-neon-purple/10 hover:shadow-[0_0_15px_rgba(176,38,255,0.3)]"
+                    }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="rounded-md bg-neon-purple/20 px-2 py-0.5 text-[10px] font-bold text-neon-purple truncate">
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold truncate flex items-center gap-1 ${
+                          sug.isFavorite
+                            ? "bg-alert-500 text-white shadow-[0_0_10px_rgba(255,46,85,0.5)]"
+                            : "bg-neon-purple/20 text-neon-purple"
+                        }`}
+                      >
+                        {sug.isFavorite && <HeartIcon size={11} className="fill-white" />}
                         {sug.tag}
                       </span>
                     </div>
-                    <p className="mt-2 text-xs font-bold text-white group-hover:text-neon-purple transition-colors truncate">
-                      {sug.name}
+                    <p
+                      className={`mt-2 text-xs font-bold transition-colors truncate flex items-center gap-1.5 ${
+                        sug.isFavorite
+                          ? "text-alert-500 group-hover:text-white"
+                          : "text-white group-hover:text-neon-purple"
+                      }`}
+                    >
+                      {sug.isFavorite && <HeartIcon size={13} className="text-alert-500 fill-alert-500 shrink-0" />}
+                      <span className="truncate">{sug.name}</span>
                     </p>
                     <div className="mt-1 flex items-center justify-between text-[10px] text-night-400 font-mono">
                       <span>{sug.timeOfDay}</span>
-                      <span className="text-neon-cyan">{sug.count} trip{sug.count > 1 ? "s" : ""}</span>
+                      <span className={sug.isFavorite ? "text-alert-500 font-bold" : "text-neon-cyan"}>
+                        {sug.isFavorite ? "❤️ Saved Favorite" : `${sug.count} trip${sug.count > 1 ? "s" : ""}`}
+                      </span>
                     </div>
                   </button>
                 ))}
