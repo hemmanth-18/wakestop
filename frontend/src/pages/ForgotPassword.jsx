@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { api } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
 import { EyeIcon, EyeOffIcon, CheckIcon, AlertIcon, KeyIcon } from "../components/Icons";
@@ -21,10 +22,14 @@ function getPasswordStrength(pass) {
 
 export default function ForgotPassword() {
   const nav = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const { showToast } = useToast();
 
-  const [step, setStep] = useState(1); // 1: Request Code, 2: Verify Code, 3: Reset Password
-  const [email, setEmail] = useState("");
+  const registeredEmail = user?.email || location.state?.email || "";
+
+  const [step, setStep] = useState(registeredEmail ? 2 : 1); // Jump to step 2 if registered email is known
+  const [email, setEmail] = useState(registeredEmail);
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,7 +38,6 @@ export default function ForgotPassword() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [demoCode, setDemoCode] = useState(null);
 
   // Resend timer countdown (60s)
   const [countdown, setCountdown] = useState(0);
@@ -46,22 +50,44 @@ export default function ForgotPassword() {
     return () => clearTimeout(timer);
   }, [countdown]);
 
+  // Auto-send 6-digit code to registered email if known
+  useEffect(() => {
+    if (registeredEmail && !email) {
+      setEmail(registeredEmail);
+    }
+    if (registeredEmail && step === 2 && countdown === 0) {
+      autoDispatchCode(registeredEmail);
+    }
+  }, [registeredEmail]);
+
+  async function autoDispatchCode(targetEmail) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.forgotPassword(targetEmail);
+      showToast(`6-digit code sent to ${targetEmail}`, "success");
+      setCountdown(60);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send verification code");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const strength = getPasswordStrength(newPassword);
   const isMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
 
   // Step 1: Request Verification Code
   async function handleRequestCode(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setError(null);
-    if (!email) return;
+    const targetEmail = email || registeredEmail;
+    if (!targetEmail) return;
 
     setBusy(true);
     try {
-      const res = await api.forgotPassword(email);
-      if (res.demoCode) {
-        setDemoCode(res.demoCode);
-      }
-      showToast("6-digit verification code sent to your email!", "success");
+      await api.forgotPassword(targetEmail);
+      showToast(`6-digit verification code sent to ${targetEmail}!`, "success");
       setStep(2);
       setCountdown(60);
     } catch (err) {
