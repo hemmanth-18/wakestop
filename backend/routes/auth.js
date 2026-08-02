@@ -195,12 +195,17 @@ router.post("/forgot-password", async (req, res) => {
     await db.users.update(user.id, { resetCode: code, resetCodeExpiry: expiry });
 
     // Send email dispatch
-    const emailResult = await sendResetCodeEmail(cleanEmail, code, user.name || "Commuter");
+    try {
+      await sendResetCodeEmail(cleanEmail, code, user.name || "Commuter");
+    } catch (emailErr) {
+      console.warn("⚠️ SMTP email dispatch failed:", emailErr?.message);
+    }
 
     return res.json({
       message: "Verification code sent to your email address",
     });
   } catch (err) {
+    console.error("Forgot password error:", err);
     return res.status(500).json({ error: "Failed to generate verification code" });
   }
 });

@@ -9,14 +9,17 @@ async function getTransporter() {
   if (transporter) return transporter;
 
   const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const user = (process.env.SMTP_USER || "").trim();
+  const pass = (process.env.SMTP_PASS || "").replace(/\s+/g, "");
 
   if (user && pass) {
     if (host === "smtp.gmail.com" || user.endsWith("@gmail.com")) {
       transporter = nodemailer.createTransport({
         service: "gmail",
         auth: { user, pass },
+        tls: {
+          rejectUnauthorized: false,
+        },
       });
       console.log(`📧 Configured Gmail SMTP transporter for ${user}`);
     } else {
@@ -25,6 +28,9 @@ async function getTransporter() {
         port: parseInt(process.env.SMTP_PORT || "465", 10),
         secure: process.env.SMTP_SECURE !== "false",
         auth: { user, pass },
+        tls: {
+          rejectUnauthorized: false,
+        },
       });
       console.log(`📧 Configured custom SMTP transporter for ${host}`);
     }
