@@ -8,9 +8,9 @@ let transporter = null;
 async function getTransporter() {
   if (transporter) return transporter;
 
-  const host = process.env.SMTP_HOST;
-  const user = (process.env.SMTP_USER || "").trim();
-  const pass = (process.env.SMTP_PASS || "").replace(/\s+/g, "");
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const user = (process.env.SMTP_USER || "wakestop123@gmail.com").trim();
+  const pass = (process.env.SMTP_PASS || "bkgcqmgekqqrypxp").replace(/\s+/g, "");
 
   if (user && pass) {
     if (host === "smtp.gmail.com" || user.endsWith("@gmail.com")) {
@@ -59,7 +59,7 @@ async function getTransporter() {
 
 export async function sendResetCodeEmail(toEmail, code, username = "Commuter") {
   const subject = "WakeStop — 6-Digit Password Reset Verification Code";
-  const senderEmail = process.env.SMTP_USER || "no-reply@wakestop.app";
+  const senderEmail = (process.env.SMTP_USER || "wakestop123@gmail.com").trim();
   const htmlContent = `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #050811; color: #ffffff; padding: 30px; border-radius: 16px; max-width: 500px; margin: 0 auto; border: 1px solid #00F0FF;">
       <div style="text-align: center; margin-bottom: 20px;">
