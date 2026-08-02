@@ -20,7 +20,7 @@ const handleRegister = async (req, res) => {
 
     const existing = await db.users.findByEmail(cleanEmail);
     if (existing) {
-      return res.status(409).json({ error: "An account with this email already exists" });
+      return res.status(409).json({ error: "An account with this email already exists. Please sign in instead." });
     }
 
     const passwordHash = await bcrypt.hash(cleanPassword, 10);

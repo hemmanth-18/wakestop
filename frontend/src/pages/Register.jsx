@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
 import { EyeIcon, EyeOffIcon, CheckIcon, AlertIcon } from "../components/Icons";
 
@@ -20,6 +21,7 @@ function getPasswordStrength(pass) {
 
 export default function Register() {
   const { register } = useAuth();
+  const { showToast } = useToast();
   const nav = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,6 +30,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState(null);
+  const [isDuplicate, setIsDuplicate] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const strength = getPasswordStrength(password);
@@ -36,6 +39,21 @@ export default function Register() {
   async function onSubmit(e) {
     e.preventDefault();
     setError(null);
+    setIsDuplicate(false);
+
+    const cleanName = name.trim();
+    const cleanEmail = email.trim();
+
+    if (!cleanName) {
+      setError("Please enter your name.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match. Please re-enter.");
@@ -48,10 +66,15 @@ export default function Register() {
 
     setBusy(true);
     try {
-      await register(name, email, password);
-      nav("/select-destination");
+      const userObj = await register(cleanName, cleanEmail, password);
+      showToast(`Welcome to WakeStop, ${userObj?.name || cleanName}! Your account has been created successfully. 🎉`, "success");
+      nav("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      setError(msg);
+      if (msg.toLowerCase().includes("already exists")) {
+        setIsDuplicate(true);
+      }
     } finally {
       setBusy(false);
     }
@@ -103,9 +126,17 @@ export default function Register() {
 
               <form onSubmit={onSubmit} className="space-y-4">
                 {error && (
-                  <p className="rounded-xl border border-alert-500/50 bg-alert-600/20 px-3 py-2 text-xs font-semibold text-alert-500">
-                    {error}
-                  </p>
+                  <div className="rounded-xl border border-alert-500/50 bg-alert-600/20 px-3.5 py-3 text-xs font-semibold text-alert-500 space-y-2">
+                    <p>{error}</p>
+                    {isDuplicate && (
+                      <Link
+                        to="/login"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-neon-cyan/20 border border-neon-cyan px-3 py-1.5 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/30 transition-all"
+                      >
+                        Go to Sign In →
+                      </Link>
+                    )}
+                  </div>
                 )}
 
                 <div>

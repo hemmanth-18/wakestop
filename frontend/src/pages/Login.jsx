@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
 import { EyeIcon, EyeOffIcon } from "../components/Icons";
 
 export default function Login() {
   const { login } = useAuth();
+  const { showToast } = useToast();
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,10 +18,21 @@ export default function Login() {
   async function onSubmit(e) {
     e.preventDefault();
     setError(null);
+
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     setBusy(true);
     try {
-      await login(email, password);
-      nav("/select-destination");
+      const userObj = await login(cleanEmail, cleanPassword);
+      showToast(`Welcome back, ${userObj?.name || "Commuter"}! 👋`, "success");
+      nav("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
