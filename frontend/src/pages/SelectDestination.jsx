@@ -7,6 +7,8 @@ import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
 import { SearchIcon, MapPinIcon, BusIcon, NavigationIcon, CheckIcon, SlidersIcon, ZapIcon, ClockIcon, HeartIcon, ChevronDownIcon } from "../components/Icons";
 import { analyzeTravelPatterns } from "../utils/aiEngine";
+import { unlockAudioContext } from "../utils/audio";
+import { startBackgroundAudioKeepAlive, requestAllMobilePermissions } from "../utils/backgroundKeepAlive";
 
 // Custom Leaflet SVG marker for map picker
 const customPickerIcon = new L.DivIcon({
@@ -260,6 +262,11 @@ export default function SelectDestination() {
 
   async function startTrip() {
     if (!token) return;
+
+    // Synchronously unlock Web Audio context & start background audio keep-alive inside user click gesture
+    unlockAudioContext();
+    startBackgroundAudioKeepAlive();
+    requestAllMobilePermissions();
 
     let destLat;
     let destLng;

@@ -1,6 +1,6 @@
 /**
  * Background Keep-Alive Controller for Screen-Off & Lock-Screen Alarm Playback.
- * Uses a silent HTML5 Audio element + MediaSession API + Web Worker timer.
+ * Uses a silent HTML5 Audio element + MediaSession API + Web Worker timer + WakeLock API.
  */
 
 const SILENT_WAV_BASE64 =
@@ -9,45 +9,80 @@ const SILENT_WAV_BASE64 =
 let backgroundAudioElement = null;
 let trackingWorker = null;
 let isKeepAliveActive = false;
+let wakeLockInstance = null;
+
+/**
+ * Request all mobile permissions (Notifications + WakeLock + Audio unlock).
+ * Call inside user click gesture.
+ */
+export async function requestAllMobilePermissions() {
+  if (typeof window === "undefined") return "denied";
+
+  let notifStatus = "granted";
+  if ("Notification" in window && Notification.permission !== "granted") {
+    try {
+      notifStatus = await Notification.requestPermission();
+    } catch (e) {
+      notifStatus = "denied";
+    }
+  }
+
+  if ("wakeLock" in navigator && !wakeLockInstance) {
+    try {
+      wakeLockInstance = await navigator.wakeLock.request("screen");
+      wakeLockInstance.addEventListener("release", () => {
+        wakeLockInstance = null;
+      });
+    } catch (e) {}
+  }
+
+  return notifStatus;
+}
 
 /**
  * Initializes and starts silent background audio loop and media session.
- * Call when GPS tracking starts.
+ * MUST be invoked directly within a user click gesture (e.g. Activate Alarm click).
  */
 export function startBackgroundAudioKeepAlive(onTickCallback = null) {
   if (typeof window === "undefined") return;
 
   try {
-    // 1. Silent HTML5 Audio Element
+    // 1. Initialize HTML5 Audio Element with playsinline
     if (!backgroundAudioElement) {
       backgroundAudioElement = new Audio(SILENT_WAV_BASE64);
       backgroundAudioElement.loop = true;
-      backgroundAudioElement.volume = 0.01; // minimal volume to keep audio hardware active
+      backgroundAudioElement.volume = 0.05; // minimal volume to keep mobile hardware sound card active
       backgroundAudioElement.setAttribute("playsinline", "true");
+      backgroundAudioElement.setAttribute("webkit-playsinline", "true");
     }
 
-    backgroundAudioElement
-      .play()
-      .then(() => {
-        isKeepAliveActive = true;
-      })
-      .catch((e) => {
-        console.warn("Silent audio keep-alive auto-play prevented:", e?.message);
-      });
+    const playPromise = backgroundAudioElement.play();
+    if (playPromise) {
+      playPromise
+        .then(() => {
+          isKeepAliveActive = true;
+          console.log("⚡ Mobile silent background audio keep-alive active");
+        })
+        .catch((e) => {
+          console.warn("Silent audio keep-alive auto-play prevented:", e?.message);
+        });
+    }
 
-    // 2. Setup MediaSession API for OS level background media status
+    // 2. Setup OS level MediaSession API (Forces mobile OS to treat PWA as active background media player)
     if ("mediaSession" in navigator) {
       try {
         navigator.mediaSession.metadata = new MediaMetadata({
-          title: "WakeStop Active Journey Tracking",
-          artist: "WakeStop GPS Alarm System",
+          title: "WakeStop Screen-Off GPS Tracking Active",
+          artist: "WakeStop Background Alarm Engine",
           album: "GPS Alarm Active",
           artwork: [
-            { src: "/logo.png", sizes: "512x512", type: "image/png" },
+            { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
+            { src: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
           ],
         });
 
-        // Dummy handlers to keep session active
+        navigator.mediaSession.playbackState = "playing";
+
         const dummyAction = () => {};
         ["play", "pause", "stop", "previoustrack", "nexttrack"].forEach((action) => {
           try {
@@ -59,7 +94,7 @@ export function startBackgroundAudioKeepAlive(onTickCallback = null) {
       }
     }
 
-    // 3. Web Worker for background interval fallback
+    // 3. Web Worker for background interval fallback during screen-off state
     if (onTickCallback && typeof Worker !== "undefined" && !trackingWorker) {
       try {
         trackingWorker = new Worker(
@@ -76,6 +111,13 @@ export function startBackgroundAudioKeepAlive(onTickCallback = null) {
         console.warn("Web Worker creation fallback:", err?.message);
       }
     }
+
+    // 4. Request Screen WakeLock
+    if ("wakeLock" in navigator && !wakeLockInstance) {
+      navigator.wakeLock.request("screen").then((lock) => {
+        wakeLockInstance = lock;
+      }).catch(() => {});
+    }
   } catch (e) {
     console.warn("Background keep-alive init exception:", e?.message);
   }
@@ -83,7 +125,7 @@ export function startBackgroundAudioKeepAlive(onTickCallback = null) {
 
 /**
  * Plays an alarm sound directly using the active background audio element.
- * Works even when screen is locked because backgroundAudioElement is already active in OS media session.
+ * Works when screen is locked because backgroundAudioElement is already active in OS media session.
  */
 export function playOnBackgroundAudioElement(audioSrcUrl) {
   if (!backgroundAudioElement) return false;
@@ -92,7 +134,7 @@ export function playOnBackgroundAudioElement(audioSrcUrl) {
     backgroundAudioElement.pause();
     backgroundAudioElement.src = audioSrcUrl || SILENT_WAV_BASE64;
     backgroundAudioElement.loop = true;
-    backgroundAudioElement.volume = 1.0; // Boost to maximum
+    backgroundAudioElement.volume = 1.0; // Boost volume to 100%
     const playPromise = backgroundAudioElement.play();
     if (playPromise) {
       playPromise.catch((err) => {
@@ -115,7 +157,7 @@ export function resetBackgroundAudioToSilent() {
     backgroundAudioElement.pause();
     backgroundAudioElement.src = SILENT_WAV_BASE64;
     backgroundAudioElement.loop = true;
-    backgroundAudioElement.volume = 0.01;
+    backgroundAudioElement.volume = 0.05;
     if (isKeepAliveActive) {
       backgroundAudioElement.play().catch(() => {});
     }
@@ -123,8 +165,7 @@ export function resetBackgroundAudioToSilent() {
 }
 
 /**
- * Stops background keep-alive audio and worker.
- * Call when tracking ends or trip is acknowledged.
+ * Stops background keep-alive audio, worker, and wake lock.
  */
 export function stopBackgroundAudioKeepAlive() {
   isKeepAliveActive = false;
@@ -145,9 +186,17 @@ export function stopBackgroundAudioKeepAlive() {
     trackingWorker = null;
   }
 
+  if (wakeLockInstance) {
+    try {
+      wakeLockInstance.release();
+    } catch (_) {}
+    wakeLockInstance = null;
+  }
+
   if ("mediaSession" in navigator) {
     try {
       navigator.mediaSession.metadata = null;
+      navigator.mediaSession.playbackState = "none";
     } catch (_) {}
   }
 }

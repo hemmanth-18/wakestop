@@ -134,8 +134,22 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     }
 
     requestLock();
-    // Start silent background audio keep-alive for screen-off alarm capability
-    startBackgroundAudioKeepAlive();
+    // Start background audio keep-alive + Web Worker ticker for continuous screen-off GPS tracking
+    startBackgroundAudioKeepAlive(() => {
+      if (destination && "geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            if (pos?.coords) {
+              setPosition(pos.coords);
+              const d = distanceMetres(pos.coords.latitude, pos.coords.longitude, destination.lat, destination.lng);
+              setDistance(d);
+            }
+          },
+          () => {},
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      }
+    });
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -154,7 +168,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
         wakeLockRef.current = null;
       }
     };
-  }, []);
+  }, [destination]);
 
   // Battery monitoring loop
   useEffect(() => {
