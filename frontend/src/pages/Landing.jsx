@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
-import { ZapIcon, NavigationIcon, BellIcon, ShieldIcon } from "../components/Icons";
+import { ZapIcon, NavigationIcon, BellIcon, ShieldIcon, HeartIcon } from "../components/Icons";
 import { LiquidButton } from "../components/LiquidButton";
 
 const HEADLINE_PHRASES = [
@@ -49,6 +49,10 @@ function TypewriterHeadline() {
 
 export default function Landing() {
   const { user } = useAuth();
+
+  const favList = user?.favoriteLocations && user.favoriteLocations.length > 0
+    ? user.favoriteLocations
+    : (user?.favoriteLocation ? [user.favoriteLocation] : []);
 
   return (
     <div className="relative min-h-[calc(100vh-64px)] px-4 py-10 sm:py-16 text-center">
@@ -104,8 +108,8 @@ export default function Landing() {
                 </LiquidButton>
               </div>
 
-              {/* Quick Access Dashboard Cards */}
-              <div className="mx-auto max-w-2xl grid grid-cols-1 sm:grid-cols-3 gap-3 text-left pt-2">
+              {/* Quick Access Dashboard Cards — 4 Column Grid */}
+              <div className="mx-auto max-w-4xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-left pt-2">
                 <Link
                   to="/select-destination"
                   className="glass-panel p-4 rounded-2xl border border-neon-gold/30 hover:border-neon-gold hover:shadow-[0_0_20px_rgba(255,184,0,0.2)] transition-all group"
@@ -116,6 +120,20 @@ export default function Landing() {
                   </div>
                   <p className="text-xs font-bold text-white">Start New Trip</p>
                   <p className="text-[11px] text-night-500 mt-1">Set destination &amp; wake alarm</p>
+                </Link>
+
+                <Link
+                  to="/profile"
+                  className="glass-panel p-4 rounded-2xl border border-alert-500/40 hover:border-alert-500 hover:shadow-[0_0_20px_rgba(255,46,85,0.25)] transition-all group"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <HeartIcon size={20} className="text-alert-500 fill-alert-500 group-hover:scale-110 transition-transform" />
+                    <span className="text-[10px] font-mono text-alert-500 font-bold uppercase tracking-wider">
+                      {favList.length}/3 Saved
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-white">Favorite Spots</p>
+                  <p className="text-[11px] text-night-500 mt-1">Manage &amp; quick launch</p>
                 </Link>
 
                 <Link
@@ -142,6 +160,63 @@ export default function Landing() {
                   <p className="text-[11px] text-night-500 mt-1">Avatar &amp; security settings</p>
                 </Link>
               </div>
+
+              {/* Saved Favorites Quick Bar on Dashboard */}
+              {favList.length > 0 ? (
+                <div className="mx-auto max-w-4xl rounded-2xl border border-alert-500/40 bg-night-950/80 p-4 shadow-[0_0_20px_rgba(255,46,85,0.15)] text-left">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <HeartIcon size={16} className="text-alert-500 fill-alert-500" />
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider text-alert-500">
+                        Quick Launch Favorites ({favList.length}/3)
+                      </h3>
+                    </div>
+                    <Link
+                      to="/profile"
+                      className="text-xs font-bold text-neon-gold hover:underline flex items-center gap-1"
+                    >
+                      + Manage Favorites
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {favList.map((fav, idx) => (
+                      <Link
+                        key={fav.id || idx}
+                        to="/select-destination"
+                        className="group flex items-center justify-between rounded-xl border border-alert-500/30 bg-alert-500/10 p-3 hover:border-alert-500 hover:bg-alert-500/20 transition-all"
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="text-xs font-bold text-white group-hover:text-alert-500 transition-colors truncate flex items-center gap-1.5">
+                            <HeartIcon size={12} className="text-alert-500 fill-alert-500 shrink-0" />
+                            <span className="truncate">{fav.name}</span>
+                          </p>
+                          <p className="text-[10px] text-night-400 font-mono mt-0.5 truncate">
+                            Lat: {Number(fav.lat).toFixed(4)}, Lng: {Number(fav.lng).toFixed(4)}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-lg bg-alert-500 text-white px-2 py-1 text-[10px] font-bold shadow-[0_0_10px_rgba(255,46,85,0.5)]">
+                          Start 🚀
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="mx-auto max-w-4xl rounded-2xl border border-alert-500/30 bg-night-950/60 p-4 text-center">
+                  <p className="text-xs font-bold text-alert-500 flex items-center justify-center gap-1.5">
+                    <HeartIcon size={14} className="fill-alert-500" /> Save Favorite Locations (Home, Work, Station)
+                  </p>
+                  <p className="text-[11px] text-night-400 mt-1">
+                    Save up to 3 spots in your profile for 1-tap quick trip launch!
+                  </p>
+                  <Link
+                    to="/profile"
+                    className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl border border-alert-500/50 bg-alert-500/20 px-4 py-2 text-xs font-extrabold text-alert-500 hover:bg-alert-500 hover:text-white transition-all"
+                  >
+                    <HeartIcon size={14} className="fill-current" /> + Add Favorites in Profile
+                  </Link>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
