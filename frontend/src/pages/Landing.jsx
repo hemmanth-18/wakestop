@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
+import AnimatedIntro from "../components/AnimatedIntro";
 import { ZapIcon, NavigationIcon, BellIcon, ShieldIcon, HeartIcon } from "../components/Icons";
 import { LiquidButton } from "../components/LiquidButton";
 
@@ -49,6 +50,9 @@ function TypewriterHeadline() {
 
 export default function Landing() {
   const { user } = useAuth();
+  const [showIntro, setShowIntro] = useState(() => {
+    return sessionStorage.getItem("wakestop_intro_completed") !== "true";
+  });
 
   const favList = user?.favoriteLocations && user.favoriteLocations.length > 0
     ? user.favoriteLocations
@@ -56,6 +60,13 @@ export default function Landing() {
 
   return (
     <div className="relative min-h-[calc(100vh-64px)] px-4 py-10 sm:py-16 text-center">
+      {showIntro && (
+        <AnimatedIntro
+          forceShow={showIntro}
+          onComplete={() => setShowIntro(false)}
+        />
+      )}
+
       <ThunderNeonCanvas />
 
       <div className="relative z-10 mx-auto max-w-5xl lg:max-w-6xl">
@@ -106,6 +117,13 @@ export default function Landing() {
                 <LiquidButton to="/select-destination" variant="gold">
                   Start New Journey
                 </LiquidButton>
+                <button
+                  type="button"
+                  onClick={() => setShowIntro(true)}
+                  className="rounded-2xl border border-neon-cyan/40 bg-night-900/80 px-5 py-3.5 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all cursor-pointer shadow-[0_0_15px_rgba(0,240,255,0.15)] flex items-center gap-2"
+                >
+                  <span>🎬</span> Replay Intro
+                </button>
               </div>
 
               {/* Quick Access Dashboard Cards — 4 Column Grid */}
@@ -232,6 +250,13 @@ export default function Landing() {
               >
                 Sign In
               </Link>
+              <button
+                type="button"
+                onClick={() => setShowIntro(true)}
+                className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl border border-neon-cyan/40 bg-night-900/80 px-6 py-4 font-display font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all text-base cursor-pointer shadow-[0_0_15px_rgba(0,240,255,0.15)]"
+              >
+                <span>🎬</span> Replay Intro
+              </button>
             </div>
           )}
         </div>
