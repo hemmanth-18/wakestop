@@ -2,61 +2,21 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+
 dotenv.config();
-
-const LOCAL_DB_FILE = path.join(process.cwd(), "backend", "data", "local_db.json");
-
-let supabaseClient = null;
-
-try {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (supabaseUrl && supabaseKey && typeof supabaseKey === "string" && supabaseKey.length > 10) {
-    supabaseClient = createClient(supabaseUrl, supabaseKey);
-    console.log("⚡ Connected strictly to Supabase Cloud Database");
-  } else {
-    console.log("📁 Using Local Persistent Database Engine (local_db.json)");
-  }
-} catch (e) {
-  console.warn("Supabase init warning:", e?.message);
+if (fs.existsSync(path.join(process.cwd(), "backend", ".env"))) {
+  dotenv.config({ path: path.join(process.cwd(), "backend", ".env") });
 }
 
-export const supabase = supabaseClient;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-let localStore = {
-  users: [],
-  trips: [],
-  stops: [
-    { id: "1", name: "Coimbatore Gandhipuram Bus Stand", latitude: 11.0183, longitude: 76.9725 },
-    { id: "2", name: "Tirupur Bus Stand", latitude: 11.1085, longitude: 77.3411 },
-    { id: "3", name: "Erode Bus Stand", latitude: 11.341, longitude: 77.7172 },
-    { id: "4", name: "Salem Central Bus Stand", latitude: 11.6643, longitude: 78.146 },
-    { id: "5", name: "Krishnagiri Bus Stand", latitude: 12.5186, longitude: 78.2137 },
-    { id: "6", name: "Vellore Bus Stand", latitude: 12.9165, longitude: 79.1325 },
-    { id: "7", name: "Kanchipuram Bus Stand", latitude: 12.8342, longitude: 79.7036 },
-    { id: "8", name: "Chennai Koyambedu (CMBT)", latitude: 13.0693, longitude: 80.1948 },
-  ],
-};
-
-try {
-  if (fs.existsSync(LOCAL_DB_FILE)) {
-    const raw = fs.readFileSync(LOCAL_DB_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (parsed) {
-      localStore = { ...localStore, ...parsed };
-    }
-  }
-} catch (e) {
-  // Ignore filesystem read errors (read-only environment on Vercel)
+if (!supabaseUrl || !supabaseKey) {
+  console.error("❌ CRITICAL ERROR: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required in environment!");
 }
 
-function saveLocalStore() {
-  try {
-    fs.writeFileSync(LOCAL_DB_FILE, JSON.stringify(localStore, null, 2), "utf-8");
-  } catch (e) {
-    // Ignore read-only file system errors on Vercel
-  }
-}
+export const supabase = createClient(supabaseUrl, supabaseKey);
+console.log("⚡ Connected strictly to Supabase Cloud Database:", supabaseUrl);
 
 function parseFavoriteLocations(userRow) {
   if (!userRow) return [];
@@ -89,466 +49,242 @@ function parseFavoriteLocations(userRow) {
   return [];
 }
 
+function mapUserRow(userRow) {
+  if (!userRow) return null;
+  const favList = parseFavoriteLocations(userRow);
+  return {
+    id: userRow.id,
+    name: userRow.name,
+    email: userRow.email,
+    passwordHash: userRow.password_hash || userRow.passwordHash,
+    profileImage: userRow.profile_image || userRow.profileImage || "",
+    favoriteLocations: favList,
+    favoriteLocation: userRow.favorite_location || userRow.favoriteLocation || (favList[0] || null),
+    resetCode: userRow.reset_code || userRow.resetCode || null,
+    resetCodeExpiry: userRow.reset_code_expiry || userRow.resetCodeExpiry || null,
+    createdAt: userRow.created_at || userRow.createdAt,
+    updatedAt: userRow.updated_at || userRow.updatedAt,
+  };
+}
+
+function mapTripRow(t) {
+  if (!t) return null;
+  return {
+    id: t.id,
+    userId: t.user_id || t.userId,
+    start: { name: t.start_name || t.start?.name || null, lat: t.start_lat ?? t.start?.lat ?? null, lng: t.start_lng ?? t.start?.lng ?? null },
+    destination: {
+      name: t.destination_name || t.destination?.name,
+      lat: t.destination_lat ?? t.destination?.lat,
+      lng: t.destination_lng ?? t.destination?.lng,
+    },
+    startTime: t.start_time || t.startTime,
+    endTime: t.end_time || t.endTime,
+    status: t.status,
+    wakeResponseSec: t.wake_response_sec ?? t.wakeResponseSec ?? null,
+  };
+}
+
+function mapStopRow(s) {
+  if (!s) return null;
+  const latVal = Number(s.latitude ?? s.lat);
+  const lngVal = Number(s.longitude ?? s.lng);
+  return {
+    id: String(s.id),
+    name: s.name,
+    latitude: latVal,
+    longitude: lngVal,
+    lat: latVal,
+    lng: lngVal,
+  };
+}
+
 export const db = {
   users: {
     findByEmail: async (email) => {
       const targetEmail = (typeof email === "string" ? email : "").trim().toLowerCase();
       if (!targetEmail) return null;
 
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from("users")
-            .select("*")
-            .ilike("email", targetEmail)
-            .limit(1);
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .ilike("email", targetEmail)
+        .limit(1);
 
-          if (error) {
-            console.warn("Supabase findByEmail notice:", error.message);
-          }
-
-          const userRow = data && data.length > 0 ? data[0] : null;
-          if (userRow) {
-            const favList = parseFavoriteLocations(userRow);
-            const userObj = {
-              id: userRow.id,
-              name: userRow.name,
-              email: userRow.email,
-              passwordHash: userRow.password_hash || userRow.passwordHash,
-              profileImage: userRow.profile_image || userRow.profileImage || "",
-              favoriteLocations: favList,
-              favoriteLocation: userRow.favorite_location || userRow.favoriteLocation || (favList[0] || null),
-              resetCode: userRow.reset_code || userRow.resetCode || null,
-              resetCodeExpiry: userRow.reset_code_expiry || userRow.resetCodeExpiry || null,
-              createdAt: userRow.created_at || userRow.createdAt,
-              updatedAt: userRow.updated_at || userRow.updatedAt,
-            };
-            const idx = localStore.users.findIndex(
-              (u) => u && (u.id === userRow.id || (typeof u.email === "string" && u.email.toLowerCase() === targetEmail))
-            );
-            if (idx !== -1) {
-              localStore.users[idx] = userObj;
-            } else {
-              localStore.users.push(userObj);
-            }
-            return userObj;
-          }
-        } catch (e) {
-          console.warn("Supabase findByEmail exception:", e?.message);
-        }
+      if (error) {
+        console.error("Supabase findByEmail error:", error.message);
+        return null;
       }
 
-      const local = (localStore.users || []).find((u) => u && typeof u.email === "string" && u.email.toLowerCase() === targetEmail);
-      if (local) {
-        const favList = parseFavoriteLocations(local);
-        return {
-          ...local,
-          passwordHash: local.passwordHash || local.password_hash,
-          favoriteLocations: favList,
-          favoriteLocation: local.favoriteLocation || (favList[0] || null),
-        };
-      }
-      return null;
+      return data && data.length > 0 ? mapUserRow(data[0]) : null;
     },
 
     findById: async (id) => {
       if (!id) return null;
 
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", id)
-            .limit(1);
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", id)
+        .limit(1);
 
-          if (error) {
-            console.warn("Supabase findById notice:", error.message);
-          }
+      if (error) {
+        console.error("Supabase findById error:", error.message);
+        return null;
+      }
 
-          const userRow = data && data.length > 0 ? data[0] : null;
-          if (userRow) {
-            const favList = parseFavoriteLocations(userRow);
-            const userObj = {
-              id: userRow.id,
-              name: userRow.name,
-              email: userRow.email,
-              passwordHash: userRow.password_hash || userRow.passwordHash,
-              profileImage: userRow.profile_image || userRow.profileImage || "",
-              favoriteLocations: favList,
-              favoriteLocation: userRow.favorite_location || userRow.favoriteLocation || (favList[0] || null),
-              resetCode: userRow.reset_code || userRow.resetCode || null,
-              resetCodeExpiry: userRow.reset_code_expiry || userRow.resetCodeExpiry || null,
-              createdAt: userRow.created_at || userRow.createdAt,
-              updatedAt: userRow.updated_at || userRow.updatedAt,
-            };
-            const idx = localStore.users.findIndex((u) => u && u.id === id);
-            if (idx !== -1) {
-              localStore.users[idx] = userObj;
-            } else {
-              localStore.users.push(userObj);
-            }
-            return userObj;
-          }
-        } catch (e) {
-          console.warn("Supabase findById exception:", e?.message);
-        }
-      }
-      const local = (localStore.users || []).find((u) => u && u.id === id);
-      if (local) {
-        const favList = parseFavoriteLocations(local);
-        return {
-          ...local,
-          favoriteLocations: favList,
-          favoriteLocation: local.favoriteLocation || (favList[0] || null),
-        };
-      }
-      return null;
+      return data && data.length > 0 ? mapUserRow(data[0]) : null;
     },
 
     insert: async (user) => {
-      const localUser = {
+      const supabasePayload = {
         id: user.id,
         name: user.name,
         email: user.email,
-        passwordHash: user.passwordHash,
-        profileImage: user.profileImage || "",
-        resetCode: user.resetCode || null,
-        resetCodeExpiry: user.resetCodeExpiry || null,
-        createdAt: user.createdAt || new Date().toISOString(),
-        updatedAt: user.updatedAt || new Date().toISOString(),
+        password_hash: user.passwordHash,
+        profile_image: user.profileImage || "",
+        created_at: user.createdAt || new Date().toISOString(),
       };
 
-      const existingIdx = localStore.users.findIndex(
-        (u) => u && (u.id === user.id || (typeof u.email === "string" && u.email.toLowerCase() === user.email.toLowerCase()))
-      );
-      if (existingIdx !== -1) {
-        localStore.users[existingIdx] = localUser;
-      } else {
-        localStore.users.push(localUser);
+      const { data, error } = await supabase
+        .from("users")
+        .insert(supabasePayload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("❌ Supabase insert user error:", error.message);
+        throw new Error(error.message);
       }
-      saveLocalStore();
 
-      if (supabase) {
-        try {
-          const supabasePayload = {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            password_hash: user.passwordHash,
-            profile_image: user.profileImage || "",
-            created_at: user.createdAt || new Date().toISOString(),
-          };
-
-          const { data, error } = await supabase
-            .from("users")
-            .insert(supabasePayload)
-            .select()
-            .maybeSingle();
-
-          if (error) {
-            console.error("❌ Supabase insert user error:", error.message);
-          } else if (data) {
-            console.log("✅ Supabase user created successfully:", data.email);
-            return {
-              id: data.id,
-              name: data.name,
-              email: data.email,
-              passwordHash: data.password_hash || data.passwordHash || user.passwordHash,
-              profileImage: data.profile_image || data.profileImage || "",
-              createdAt: data.created_at || data.createdAt,
-            };
-          }
-        } catch (e) {
-          console.warn("Supabase insert user exception:", e?.message);
-        }
-      }
-      return localUser;
+      console.log("✅ Supabase user created successfully:", data.email);
+      return mapUserRow(data);
     },
 
     update: async (id, patch) => {
-      let updatedUser = null;
+      if (!id) return null;
 
-      if (supabase && id) {
-        try {
-          const updateObj = {};
-          if (patch.name !== undefined) updateObj.name = patch.name;
-          if (patch.passwordHash !== undefined) updateObj.password_hash = patch.passwordHash;
-          if (patch.profileImage !== undefined) updateObj.profile_image = patch.profileImage;
-          if (patch.favoriteLocations !== undefined) {
-            updateObj.favorite_location = patch.favoriteLocations;
-          } else if (patch.favoriteLocation !== undefined) {
-            updateObj.favorite_location = patch.favoriteLocation;
-          }
-          if (patch.resetCode !== undefined) updateObj.reset_code = patch.resetCode;
-          if (patch.resetCodeExpiry !== undefined) updateObj.reset_code_expiry = patch.resetCodeExpiry;
-          updateObj.updated_at = new Date().toISOString();
+      const updateObj = {};
+      if (patch.name !== undefined) updateObj.name = patch.name;
+      if (patch.passwordHash !== undefined) updateObj.password_hash = patch.passwordHash;
+      if (patch.profileImage !== undefined) updateObj.profile_image = patch.profileImage;
+      if (patch.favoriteLocations !== undefined) {
+        updateObj.favorite_location = patch.favoriteLocations;
+      } else if (patch.favoriteLocation !== undefined) {
+        updateObj.favorite_location = patch.favoriteLocation;
+      }
+      if (patch.resetCode !== undefined) updateObj.reset_code = patch.resetCode;
+      if (patch.resetCodeExpiry !== undefined) updateObj.reset_code_expiry = patch.resetCodeExpiry;
+      updateObj.updated_at = new Date().toISOString();
 
-          let { data, error } = await supabase
-            .from("users")
-            .update(updateObj)
-            .eq("id", id)
-            .select()
-            .maybeSingle();
+      let { data, error } = await supabase
+        .from("users")
+        .update(updateObj)
+        .eq("id", id)
+        .select()
+        .maybeSingle();
 
-          if (error) {
-            console.warn("Supabase update notice:", error.message);
-          }
-
-          if (!data && patch.email) {
-            const fallbackRes = await supabase
-              .from("users")
-              .update(updateObj)
-              .ilike("email", patch.email)
-              .select()
-              .maybeSingle();
-            data = fallbackRes.data;
-          }
-
-          if (data) {
-            console.log("✅ Supabase user updated successfully for id:", id || data.id);
-            const favList = patch.favoriteLocations !== undefined
-              ? patch.favoriteLocations
-              : parseFavoriteLocations(data);
-            updatedUser = {
-              id: data.id,
-              name: data.name,
-              email: data.email,
-              passwordHash: data.password_hash || data.passwordHash,
-              profileImage: data.profile_image || data.profileImage || "",
-              favoriteLocations: favList,
-              favoriteLocation: data.favorite_location || data.favoriteLocation || (favList[0] || null),
-              resetCode: data.reset_code || data.resetCode || null,
-              resetCodeExpiry: data.reset_code_expiry || data.resetCodeExpiry || null,
-              createdAt: data.created_at || data.createdAt,
-              updatedAt: data.updated_at || data.updatedAt,
-            };
-
-            const idx = localStore.users.findIndex(
-              (u) => u && (u.id === data.id || (typeof u.email === "string" && u.email.toLowerCase() === data.email.toLowerCase()))
-            );
-            if (idx !== -1) {
-              localStore.users[idx] = { ...localStore.users[idx], ...updatedUser };
-            } else {
-              localStore.users.push(updatedUser);
-            }
-            saveLocalStore();
-            return updatedUser;
-          }
-        } catch (e) {
-          console.warn("Supabase update user exception:", e?.message);
-        }
+      if (error) {
+        console.error("Supabase update user error:", error.message);
       }
 
-      if (updatedUser) return updatedUser;
-
-      let idx = localStore.users.findIndex(
-        (u) => u && (u.id === id || (patch.email && typeof u.email === "string" && u.email.toLowerCase() === patch.email.toLowerCase()))
-      );
-
-      if (idx === -1 && id) {
-        const fetched = await db.users.findById(id);
-        if (fetched) {
-          idx = localStore.users.findIndex((u) => u && u.id === id);
-        }
+      if (!data && patch.email) {
+        const fallbackRes = await supabase
+          .from("users")
+          .update(updateObj)
+          .ilike("email", patch.email)
+          .select()
+          .maybeSingle();
+        data = fallbackRes.data;
       }
 
-      if (idx !== -1) {
-        localStore.users[idx] = {
-          ...localStore.users[idx],
-          ...patch,
-          updatedAt: new Date().toISOString(),
-        };
-        saveLocalStore();
-        return localStore.users[idx];
-      }
-
-      return null;
+      return mapUserRow(data);
     },
   },
 
   trips: {
     findByUser: async (userId) => {
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from("trips")
-            .select("*")
-            .eq("user_id", userId)
-            .order("start_time", { ascending: false });
+      const { data, error } = await supabase
+        .from("trips")
+        .select("*")
+        .eq("user_id", userId)
+        .order("start_time", { ascending: false });
 
-          if (!error && data) {
-            return data.map((t) => ({
-              id: t.id,
-              userId: t.user_id,
-              start: { name: t.start_name, lat: t.start_lat, lng: t.start_lng },
-              destination: {
-                name: t.destination_name,
-                lat: t.destination_lat,
-                lng: t.destination_lng,
-              },
-              startTime: t.start_time,
-              endTime: t.end_time,
-              status: t.status,
-            }));
-          }
-        } catch (e) {
-          console.warn("Supabase findByUser trips exception:", e?.message);
-        }
+      if (error) {
+        console.error("Supabase findByUser trips error:", error.message);
+        return [];
       }
-      return (localStore.trips || [])
-        .filter((t) => t.userId === userId)
-        .map((t) => ({ ...t, wakeResponseSec: t.wakeResponseSec }))
-        .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+
+      return (data || []).map(mapTripRow);
     },
+
     findById: async (id) => {
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from("trips")
-            .select("*")
-            .eq("id", id)
-            .maybeSingle();
+      const { data, error } = await supabase
+        .from("trips")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
 
-          if (!error && data) {
-            return {
-              id: data.id,
-              userId: data.user_id,
-              start: { name: data.start_name, lat: data.start_lat, lng: data.start_lng },
-              destination: {
-                name: data.destination_name,
-                lat: data.destination_lat,
-                lng: data.destination_lng,
-              },
-              startTime: data.start_time,
-              endTime: data.end_time,
-              status: data.status,
-              wakeResponseSec: data.wake_response_sec,
-            };
-          }
-        } catch (e) {
-          console.warn("Supabase findById trip exception:", e?.message);
-        }
+      if (error) {
+        console.error("Supabase findById trip error:", error.message);
+        return null;
       }
-      return (localStore.trips || []).find((t) => t.id === id) || null;
+
+      return mapTripRow(data);
     },
+
     insert: async (trip) => {
-      const localTrip = {
-        id: trip.id,
-        userId: trip.userId,
-        start: { name: trip.start?.name || null, lat: trip.start?.lat ?? null, lng: trip.start?.lng ?? null },
-        destination: {
-          name: trip.destination.name,
-          lat: trip.destination.lat,
-          lng: trip.destination.lng,
-        },
-        startTime: trip.startTime,
-        endTime: trip.endTime,
-        status: trip.status,
-        wakeResponseSec: trip.wakeResponseSec ?? null,
-      };
+      const { data, error } = await supabase
+        .from("trips")
+        .insert({
+          id: trip.id,
+          user_id: trip.userId,
+          start_name: trip.start?.name,
+          start_lat: trip.start?.lat,
+          start_lng: trip.start?.lng,
+          destination_name: trip.destination.name,
+          destination_lat: trip.destination.lat,
+          destination_lng: trip.destination.lng,
+          start_time: trip.startTime,
+          end_time: trip.endTime,
+          status: trip.status,
+        })
+        .select()
+        .single();
 
-      if (!localStore.trips.some((t) => t.id === trip.id)) {
-        localStore.trips.push(localTrip);
-        saveLocalStore();
+      if (error) {
+        console.error("Supabase insert trip error:", error.message);
+        throw new Error(error.message);
       }
 
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from("trips")
-            .insert({
-              id: trip.id,
-              user_id: trip.userId,
-              start_name: trip.start?.name,
-              start_lat: trip.start?.lat,
-              start_lng: trip.start?.lng,
-              destination_name: trip.destination.name,
-              destination_lat: trip.destination.lat,
-              destination_lng: trip.destination.lng,
-              start_time: trip.startTime,
-              end_time: trip.endTime,
-              status: trip.status,
-            })
-            .select()
-            .single();
-
-          if (!error && data) {
-            return {
-              id: data.id,
-              userId: data.user_id,
-              start: { name: data.start_name, lat: data.start_lat, lng: data.start_lng },
-              destination: {
-                name: data.destination_name,
-                lat: data.destination_lat,
-                lng: data.destination_lng,
-              },
-              startTime: data.start_time,
-              endTime: data.end_time,
-              status: data.status,
-              wakeResponseSec: data.wake_response_sec,
-            };
-          }
-        } catch (e) {
-          console.warn("Supabase insert trip exception:", e?.message);
-        }
-      }
-      return localTrip;
+      return mapTripRow(data);
     },
+
     update: async (id, patch) => {
-      const idx = localStore.trips.findIndex((t) => t.id === id);
-      if (idx !== -1) {
-        if (patch.status !== undefined) localStore.trips[idx].status = patch.status;
-        if (patch.endTime !== undefined) localStore.trips[idx].endTime = patch.endTime;
-        if (patch.wakeResponseSec !== undefined) localStore.trips[idx].wakeResponseSec = patch.wakeResponseSec;
-        saveLocalStore();
+      const updateObj = {};
+      if (patch.status !== undefined) updateObj.status = patch.status;
+      if (patch.endTime !== undefined) updateObj.end_time = patch.endTime;
+
+      const { data, error } = await supabase
+        .from("trips")
+        .update(updateObj)
+        .eq("id", id)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error("Supabase update trip error:", error.message);
+        return null;
       }
 
-      if (supabase) {
-        try {
-          const updateObj = {};
-          if (patch.status !== undefined) updateObj.status = patch.status;
-          if (patch.endTime !== undefined) updateObj.end_time = patch.endTime;
-
-          const { data, error } = await supabase
-            .from("trips")
-            .update(updateObj)
-            .eq("id", id)
-            .select()
-            .maybeSingle();
-
-          if (!error && data) {
-            return {
-              id: data.id,
-              userId: data.user_id,
-              start: { name: data.start_name, lat: data.start_lat, lng: data.start_lng },
-              destination: {
-                name: data.destination_name,
-                lat: data.destination_lat,
-                lng: data.destination_lng,
-              },
-              startTime: data.start_time,
-              endTime: data.end_time,
-              status: data.status,
-              wakeResponseSec: localStore.trips[idx]?.wakeResponseSec,
-            };
-          }
-        } catch (e) {
-          console.warn("Supabase update trip exception:", e?.message);
-        }
-      }
-      return idx !== -1 ? localStore.trips[idx] : null;
+      return mapTripRow(data);
     },
-    deleteByUser: async (userId) => {
-      localStore.trips = (localStore.trips || []).filter((t) => t.userId !== userId);
-      saveLocalStore();
 
-      if (supabase) {
-        try {
-          await supabase.from("trips").delete().eq("user_id", userId);
-        } catch (e) {
-          console.warn("Supabase deleteByUser trips exception:", e?.message);
-        }
+    deleteByUser: async (userId) => {
+      const { error } = await supabase.from("trips").delete().eq("user_id", userId);
+      if (error) {
+        console.error("Supabase deleteByUser trips error:", error.message);
+        return false;
       }
       return true;
     },
@@ -556,38 +292,39 @@ export const db = {
 
   stops: {
     all: async () => {
-      if (supabase) {
-        try {
-          const { data, error } = await supabase.from("stops").select("*");
-          if (!error && data && data.length > 0) {
-            return data;
-          }
-        } catch (e) {
-          console.warn("Supabase stops.all exception:", e?.message);
-        }
+      const { data, error } = await supabase.from("stops").select("*");
+      if (error) {
+        console.error("Supabase stops.all error:", error.message);
+        return [];
       }
-      return localStore.stops;
+      return (data || []).map(mapStopRow);
     },
-    search: async (q) => {
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from("stops")
-            .select("*")
-            .ilike("name", `%${q || ""}%`);
 
-          if (!error && data && data.length > 0) {
-            return data;
-          }
-        } catch (e) {
-          console.warn("Supabase stops.search exception:", e?.message);
-        }
+    search: async (q) => {
+      const { data, error } = await supabase
+        .from("stops")
+        .select("*")
+        .ilike("name", `%${q || ""}%`);
+
+      if (error) {
+        console.error("Supabase stops.search error:", error.message);
+        return [];
       }
-      const queryStr = (q || "").toLowerCase();
-      return localStore.stops.filter((s) => s.name.toLowerCase().includes(queryStr));
+      return (data || []).map(mapStopRow);
     },
   },
 };
+
+const INITIAL_STOPS = [
+  { id: "1", name: "Coimbatore Gandhipuram Bus Stand", latitude: 11.0183, longitude: 76.9725 },
+  { id: "2", name: "Tirupur Bus Stand", latitude: 11.1085, longitude: 77.3411 },
+  { id: "3", name: "Erode Bus Stand", latitude: 11.341, longitude: 77.7172 },
+  { id: "4", name: "Salem Central Bus Stand", latitude: 11.6643, longitude: 78.146 },
+  { id: "5", name: "Krishnagiri Bus Stand", latitude: 12.5186, longitude: 78.2137 },
+  { id: "6", name: "Vellore Bus Stand", latitude: 12.9165, longitude: 79.1325 },
+  { id: "7", name: "Kanchipuram Bus Stand", latitude: 12.8342, longitude: 79.7036 },
+  { id: "8", name: "Chennai Koyambedu (CMBT)", latitude: 13.0693, longitude: 80.1948 },
+];
 
 export async function seedStops() {
   if (!supabase) return;
@@ -597,7 +334,7 @@ export async function seedStops() {
       .select("*", { count: "exact", head: true });
 
     if (!error && count === 0) {
-      const { error: seedError } = await supabase.from("stops").insert(localStore.stops);
+      const { error: seedError } = await supabase.from("stops").insert(INITIAL_STOPS);
       if (seedError) {
         console.warn("Supabase seedStops warning:", seedError.message);
       } else {

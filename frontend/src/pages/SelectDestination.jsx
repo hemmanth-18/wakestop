@@ -630,7 +630,15 @@ export default function SelectDestination() {
                       return (
                         <li key={stop.id}>
                           <button
-                            onClick={() => setSelected(stop)}
+                            onClick={() => {
+                              setSelected(stop);
+                              const sLat = Number(stop.latitude ?? stop.lat);
+                              const sLng = Number(stop.longitude ?? stop.lng);
+                              if (!isNaN(sLat) && !isNaN(sLng)) {
+                                setMapCenter([sLat, sLng]);
+                                setMapZoom(14);
+                              }
+                            }}
                             className={`flex w-full items-center justify-between px-4 py-3 text-left text-xs sm:text-sm transition-colors ${
                               isSelected
                                 ? "bg-neon-gold/15 text-neon-gold font-semibold"
@@ -710,12 +718,15 @@ export default function SelectDestination() {
                   />
                   <MapController center={mapCenter} zoom={mapZoom} />
                   <MapClickHandler onSelect={handleMapClick} />
-                  {(mapPin || (mode === "stops" && selected)) && (
+                  {(mapPin || (mode === "stops" && selected && (selected.latitude != null || selected.lat != null))) && (
                     <Marker
                       position={
                         mapPin
                           ? [mapPin.lat, mapPin.lng]
-                          : [selected.lat, selected.lng]
+                          : [
+                              Number(selected.latitude ?? selected.lat),
+                              Number(selected.longitude ?? selected.lng),
+                            ]
                       }
                       icon={customPickerIcon}
                     >

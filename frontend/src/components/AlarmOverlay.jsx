@@ -3,9 +3,12 @@ import { CheckIcon, ZapIcon, BellIcon } from "./Icons";
 import { stopAlarmSound } from "../utils/audio";
 
 const STAGE_COPY = {
-  notify: { title: "Nearing Stop (~2 km)!", sub: "Yellow Zone — Start getting ready." },
-  alarm: { title: "Getting close!", sub: "Start gathering your belongings." },
-  critical: { title: "Wake Up Now!", sub: "Your destination is immediately approaching." },
+  stage1_1km: { title: "Stage 1 Warning (1 km)", sub: "Approaching destination (~1 km away). Start getting ready." },
+  stage2_500m: { title: "Stage 2 Wake Up! (500 m)", sub: "Destination under 500 m. Gather your luggage and belongings." },
+  stage3_100m: { title: "Stage 3 Get Off Now! (100 m)", sub: "Destination under 100 m! Prepare to step off vehicle immediately." },
+  notify: { title: "Stage 1 Warning (1 km)", sub: "Approaching destination (~1 km away). Start getting ready." },
+  alarm: { title: "Stage 2 Wake Up! (500 m)", sub: "Destination under 500 m. Gather your luggage and belongings." },
+  critical: { title: "Stage 3 Get Off Now! (100 m)", sub: "Destination under 100 m! Prepare to step off vehicle immediately." },
   arrived: { title: "You've Arrived!", sub: "Journey completed safely." },
 };
 
@@ -17,16 +20,16 @@ export default function AlarmOverlay({
   isBatteryCritical = false,
   batteryRecommendation = null,
 }) {
-  if (stage !== "notify" && stage !== "alarm" && stage !== "critical" && stage !== "arrived") return null;
+  if (!stage || stage === "idle" || stage === "stopped") return null;
 
   const copy = isBatteryCritical
     ? {
         title: "Battery Critically Low!",
         sub: "Alarm activated early to avoid missing your stop due to phone shutdown.",
       }
-    : STAGE_COPY[stage] || STAGE_COPY.alarm;
+    : STAGE_COPY[stage] || STAGE_COPY.stage2_500m;
 
-  const isCritical = stage === "critical" || isBatteryCritical;
+  const isCritical = stage === "stage3_100m" || stage === "critical" || isBatteryCritical;
   const isArrived = stage === "arrived";
 
   const handleAcknowledgeClick = () => {

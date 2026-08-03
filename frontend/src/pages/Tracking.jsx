@@ -122,12 +122,15 @@ export default function Tracking() {
   }
 
   const stageBadge = {
-    idle:     { label: "Tracking Live",    classes: "border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.2)]" },
-    notify:   { label: `~${Math.round((activeThresholds?.notifyM || 2000)/1000)} km — Nearing`, classes: "border-neon-purple/40 bg-neon-purple/20 text-neon-purple" },
-    alarm:    { label: "Wake Up!", classes: "border-neon-gold bg-neon-gold text-night-950 font-bold shadow-[0_0_20px_rgba(255,184,0,0.5)]" },
-    critical: { label: "CRITICAL", classes: "border-alert-500 bg-alert-500 text-white font-black alarm-shake shadow-[0_0_25px_rgba(255,46,85,0.6)]" },
-    arrived:  { label: "Arrived ✓", classes: "border-neon-emerald bg-neon-emerald text-night-950 font-bold" },
-    stopped:  { label: "Snoozed",   classes: "border-night-700 bg-night-800 text-night-500" },
+    idle:        { label: "Tracking Live", classes: "border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.2)]" },
+    stage1_1km:  { label: "Stage 1 Alert (1 km)", classes: "border-neon-purple bg-neon-purple text-white font-bold shadow-[0_0_15px_rgba(176,38,255,0.5)]" },
+    stage2_500m: { label: "Stage 2 Wake Up! (500 m)", classes: "border-neon-gold bg-neon-gold text-night-950 font-bold shadow-[0_0_20px_rgba(255,184,0,0.5)]" },
+    stage3_100m: { label: "Stage 3 Get Off! (100 m)", classes: "border-alert-500 bg-alert-500 text-white font-black alarm-shake shadow-[0_0_25px_rgba(255,46,85,0.6)]" },
+    notify:      { label: "Stage 1 Alert (1 km)", classes: "border-neon-purple bg-neon-purple text-white font-bold" },
+    alarm:       { label: "Stage 2 Wake Up! (500 m)", classes: "border-neon-gold bg-neon-gold text-night-950 font-bold" },
+    critical:    { label: "Stage 3 Get Off! (100 m)", classes: "border-alert-500 bg-alert-500 text-white font-black alarm-shake" },
+    arrived:     { label: "Arrived ✓", classes: "border-neon-emerald bg-neon-emerald text-night-950 font-bold" },
+    stopped:     { label: "Snoozed", classes: "border-night-700 bg-night-800 text-night-500" },
   };
   const badge = stageBadge[stage] || stageBadge.idle;
 
@@ -136,7 +139,7 @@ export default function Tracking() {
 
   return (
     <div className="relative min-h-[calc(100vh-64px)] px-3 sm:px-4 py-4 sm:py-6">
-      <ThunderNeonCanvas isCritical={stage === "critical"} />
+      <ThunderNeonCanvas isCritical={stage === "stage3_100m" || stage === "critical"} />
 
       <AlarmOverlay
         stage={stage}
@@ -156,9 +159,14 @@ export default function Tracking() {
           <div className="flex items-start justify-between gap-3">
             {/* Destination name */}
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-wider text-neon-cyan">
-                Live Destination
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-neon-cyan">
+                  Live Destination
+                </p>
+                <span className="rounded-full bg-neon-cyan/20 border border-neon-cyan/40 px-2 py-0.5 text-[10px] text-neon-cyan font-mono font-bold">
+                  📱 Screen-Off Audio Keep-Alive Active
+                </span>
+              </div>
               <h1 className="mt-0.5 font-display text-xl sm:text-3xl font-extrabold text-white truncate">
                 {trip.destination.name}
               </h1>
@@ -170,7 +178,7 @@ export default function Tracking() {
           </div>
 
           {/* Prominent Stop Alarm Button when alarm/chime is active */}
-          {(stage === "notify" || stage === "alarm" || stage === "critical" || stage === "arrived") && (
+          {(stage.startsWith("stage") || stage === "notify" || stage === "alarm" || stage === "critical" || stage === "arrived") && (
             <button
               onClick={acknowledge}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-alert-500 py-3.5 text-sm sm:text-base font-extrabold text-white shadow-[0_0_25px_rgba(255,46,85,0.6)] alarm-shake active:scale-95 transition-all hover:bg-alert-600 cursor-pointer"
@@ -188,6 +196,39 @@ export default function Tracking() {
             <SlidersIcon size={15} />
             Alarm Sound &amp; Vibrate
           </button>
+        </div>
+
+        {/* ── 3-Stage Milestone Progress Bar ── */}
+        <div className="glass-panel rounded-2xl p-3.5 border-neon-cyan/30 bg-night-950/80">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-neon-cyan mb-2">
+            Multi-Stage Alarm Triggers:
+          </p>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
+            <div className={`p-2 rounded-xl border transition-all ${
+              distance !== null && distance <= (activeThresholds.stage1_1km || 1000) && distance > (activeThresholds.stage2_500m || 500)
+                ? "border-neon-purple bg-neon-purple/20 text-white font-extrabold shadow-[0_0_15px_rgba(176,38,255,0.4)]"
+                : "border-night-700 bg-night-900 text-night-400"
+            }`}>
+              <p className="font-bold text-neon-purple">Stage 1</p>
+              <p className="text-[11px]">~{(activeThresholds.stage1_1km / 1000).toFixed(1)} km</p>
+            </div>
+            <div className={`p-2 rounded-xl border transition-all ${
+              distance !== null && distance <= (activeThresholds.stage2_500m || 500) && distance > (activeThresholds.stage3_100m || 100)
+                ? "border-neon-gold bg-neon-gold/20 text-white font-extrabold shadow-[0_0_15px_rgba(255,184,0,0.4)]"
+                : "border-night-700 bg-night-900 text-night-400"
+            }`}>
+              <p className="font-bold text-neon-gold">Stage 2</p>
+              <p className="text-[11px]">~{activeThresholds.stage2_500m} m</p>
+            </div>
+            <div className={`p-2 rounded-xl border transition-all ${
+              distance !== null && distance <= (activeThresholds.stage3_100m || 100)
+                ? "border-alert-500 bg-alert-500/20 text-white font-extrabold shadow-[0_0_15px_rgba(255,46,85,0.4)]"
+                : "border-night-700 bg-night-900 text-night-400"
+            }`}>
+              <p className="font-bold text-alert-500">Stage 3</p>
+              <p className="text-[11px]">~{activeThresholds.stage3_100m} m</p>
+            </div>
+          </div>
         </div>
 
         {/* ── Error Banner ── */}

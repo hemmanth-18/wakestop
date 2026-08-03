@@ -12,29 +12,16 @@ import {
 } from "../utils/audio";
 import { calculateDynamicEta, calculateAdaptiveThresholds } from "../utils/aiEngine";
 import { getRealBatteryState, evaluateBatteryRisk } from "../utils/batteryPredictor";
-
-const DEFAULT_THRESHOLDS = {
-  notifyM: 2000,
-  alarmM: 1000,
-  criticalM: 500,
-  arrivedM: 120,
-};
+import {
+  startBackgroundAudioKeepAlive,
+  stopBackgroundAudioKeepAlive,
+} from "../utils/backgroundKeepAlive";
 
 function triggerAudio(stage, notifOptions = {}) {
-  const mult = stage === "critical" ? 1.5 : stage === "alarm" ? 1.2 : 1.0;
-  // Audio only — vibration is triggered independently
+  const mult = stage === "stage3_100m" || stage === "critical" ? 1.6 : stage === "stage2_500m" ? 1.3 : 1.0;
   playAlarmSound(getSavedSoundPreset(), mult, 10000, { stage, ...notifOptions });
 }
 
-function vibrate(_pattern) {
-  // Kept for reference — actual vibration now goes through startAlarmVibration()
-  // which runs independently of audio. This stub prevents errors if called.
-}
-
-/**
- * Enhanced notify — uses requireInteraction + vibrate so it behaves
- * like an alarm notification even when media volume is 0.
- */
 function notify(title, body, options = {}) {
   if (!("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
@@ -49,7 +36,6 @@ function notify(title, body, options = {}) {
       renotify: true,
     });
   } catch (e) {
-    // Fallback for browsers that don't support all options
     try { new Notification(title, { body }); } catch (_) {}
   }
 }
@@ -63,10 +49,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
   const [wakeResponseSec, setWakeResponseSec] = useState(null);
   const [batteryRisk, setBatteryRisk] = useState(null);
   const [isBatteryCritical, setIsBatteryCritical] = useState(false);
-
-  // Compute adaptive thresholds if custom ones aren't provided
-  const adaptiveInfo = useRef(calculateAdaptiveThresholds(tripHistory));
-  const activeThresholds = customThresholds || adaptiveInfo.current.thresholds;
+  const [currentSpeedKmh, setCurrentSpeedKmh] = useState(0);
 
   const watchId = useRef(null);
   const repeatTimer = useRef(null);
@@ -74,6 +57,10 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
   const lastStage = useRef("idle");
   const manuallyStopped = useRef(false);
   const alarmStartTime = useRef(null);
+
+  // Dynamic AI Traffic-Adaptive Thresholds calculated continuously based on speed
+  const adaptiveInfo = calculateAdaptiveThresholds(tripHistory, { vehicleSpeedKmh: currentSpeedKmh });
+  const activeThresholds = customThresholds || adaptiveInfo.thresholds;
 
   const clearRepeatTimer = () => {
     if (repeatTimer.current) {
@@ -87,7 +74,8 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     setStage("stopped");
     setIsBatteryCritical(false);
     clearRepeatTimer();
-    stopAlarmVibration(); // stop vibration independently
+    stopAlarmVibration();
+    stopBackgroundAudioKeepAlive();
     if (alarmStartTime.current) {
       const elapsedSec = Math.max(1, Math.round((Date.now() - alarmStartTime.current) / 1000));
       setWakeResponseSec(elapsedSec);
@@ -97,15 +85,15 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
   const triggerEarlyBatteryAlarm = useCallback(() => {
     manuallyStopped.current = false;
     setIsBatteryCritical(true);
-    setStage("critical");
-    lastStage.current = "critical";
+    setStage("stage3_100m");
+    lastStage.current = "stage3_100m";
 
     if (!alarmStartTime.current) {
       alarmStartTime.current = Date.now();
     }
 
     notify(
-      "Battery Critical — WakeStop!",
+      "Battery Critical — WakeStop Alarm!",
       "AI activated early alarm to prevent missing your stop due to phone shutdown.",
       {
         tag: "wakestop-battery-alarm",
@@ -115,17 +103,16 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     );
 
     playEarlyBatteryAlarm(getSavedSoundPreset());
-    // Start maximum-intensity vibration independently
     startAlarmVibration("critical");
 
     clearRepeatTimer();
     repeatTimer.current = window.setInterval(() => {
       playEarlyBatteryAlarm(getSavedSoundPreset());
-      startAlarmVibration("critical"); // restart to keep it fresh
+      startAlarmVibration("critical");
     }, 12000);
   }, []);
 
-  // Screen Wake Lock API — Persistent auto-reacquire loop for sleeping users
+  // Screen Wake Lock & Background Audio Keep-Alive Lifecycle
   useEffect(() => {
     let isMounted = true;
 
@@ -147,6 +134,8 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     }
 
     requestLock();
+    // Start silent background audio keep-alive for screen-off alarm capability
+    startBackgroundAudioKeepAlive();
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -159,6 +148,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     return () => {
       isMounted = false;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      stopBackgroundAudioKeepAlive();
       if (wakeLockRef.current) {
         wakeLockRef.current.release().catch(() => {});
         wakeLockRef.current = null;
@@ -166,7 +156,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     };
   }, []);
 
-  // Battery monitoring loop during tracking
+  // Battery monitoring loop
   useEffect(() => {
     const checkBattery = async () => {
       const bState = await getRealBatteryState();
@@ -174,7 +164,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
       const risk = evaluateBatteryRisk(bState, eta.dynamicEtaMin);
       setBatteryRisk(risk);
 
-      if (risk.triggerEarlyAlarm && !manuallyStopped.current && stage !== "arrived" && stage !== "critical") {
+      if (risk.triggerEarlyAlarm && !manuallyStopped.current && stage !== "arrived" && stage !== "stage3_100m") {
         triggerEarlyBatteryAlarm();
       }
     };
@@ -191,10 +181,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     }
     if (!destination) return;
 
-    // Unlock Web Audio API (required for sound on mobile after user gesture)
     unlockAudioContext();
-
-    // Request notification permission (needed for SW alarm notifications)
     requestNotificationPermission();
 
     watchId.current = navigator.geolocation.watchPosition(
@@ -206,25 +193,33 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
           timestamp: pos.timestamp || Date.now(),
         };
 
+        const speedKmh = pos.coords.speed != null && pos.coords.speed >= 0 ? pos.coords.speed * 3.6 : 0;
+        setCurrentSpeedKmh(speedKmh);
+
         setPosition(pos.coords);
         setPositionHistory((prev) => [...prev.slice(-25), point]);
 
         const d = distanceMetres(pos.coords.latitude, pos.coords.longitude, destination.lat, destination.lng);
         setDistance(d);
 
+        const t = activeThresholds;
         let nextStage = stage;
+
         if (manuallyStopped.current) {
-          nextStage = d <= activeThresholds.arrivedM ? "arrived" : "stopped";
+          nextStage = d <= t.arrivedM ? "arrived" : "stopped";
         } else if (isBatteryCritical) {
-          nextStage = d <= activeThresholds.arrivedM ? "arrived" : "critical";
-        } else if (d <= activeThresholds.arrivedM) {
+          nextStage = d <= t.arrivedM ? "arrived" : "stage3_100m";
+        } else if (d <= t.arrivedM) {
           nextStage = "arrived";
-        } else if (d <= activeThresholds.criticalM) {
-          nextStage = "critical";
-        } else if (d <= activeThresholds.alarmM) {
-          nextStage = "alarm";
-        } else if (d <= activeThresholds.notifyM) {
-          nextStage = "notify";
+        } else if (d <= t.stage3_100m) {
+          // Stage 3 Alarm (100m target threshold)
+          nextStage = "stage3_100m";
+        } else if (d <= t.stage2_500m) {
+          // Stage 2 Alarm (500m target threshold)
+          nextStage = "stage2_500m";
+        } else if (d <= t.stage1_1km) {
+          // Stage 1 Alarm (1 km target threshold)
+          nextStage = "stage1_1km";
         } else {
           nextStage = "idle";
         }
@@ -233,70 +228,68 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
           lastStage.current = nextStage;
           setStage(nextStage);
 
-          if ((nextStage === "alarm" || nextStage === "critical") && !alarmStartTime.current) {
+          if ((nextStage.startsWith("stage") || nextStage === "critical") && !alarmStartTime.current) {
             alarmStartTime.current = Date.now();
           }
 
-          if (nextStage === "notify") {
+          if (nextStage === "stage1_1km") {
             notify(
-              "Getting Close — Yellow Zone (~2 km)",
-              `Your destination is ~${Math.round(d / 1000)} km away. Start getting ready!`,
+              "🔔 Stage 1 Alert (1 km) — WakeStop",
+              `Approaching destination (~${(d / 1000).toFixed(1)} km). Start getting ready!`,
               {
-                tag: "wakestop-notify",
+                tag: "wakestop-stage1",
                 requireInteraction: true,
                 vibrate: [300, 150, 300],
               }
             );
-            triggerAudio(nextStage, {
-              title: "WakeStop — Yellow Zone (~2 km)",
-              body: `Your destination is ~${Math.round(d / 1000)} km away. Start getting ready!`,
-              stage: "notify",
+            triggerAudio("stage1_1km", {
+              title: "WakeStop — Stage 1 Alert (1 km)",
+              body: `Approaching destination (~${(d / 1000).toFixed(1)} km). Start getting ready!`,
+              stage: "stage1_1km",
             });
             startAlarmVibration("notify");
-          } else if (nextStage === "alarm") {
+          } else if (nextStage === "stage2_500m") {
             notify(
-              "Wake Up! — WakeStop",
-              "You're approaching your stop! Gather your belongings now.",
+              "⏰ Stage 2 Wake Up! (500 m) — WakeStop",
+              "Destination under 500 m away! Gather your luggage now.",
               {
-                tag: "wakestop-alarm-info",
+                tag: "wakestop-stage2",
                 requireInteraction: true,
                 vibrate: [500, 150, 500, 150, 500],
               }
             );
-            triggerAudio(nextStage, {
-              title: "WakeStop — Wake Up!",
-              body: "You're approaching your stop! Gather your belongings now.",
-              stage: "alarm",
+            triggerAudio("stage2_500m", {
+              title: "WakeStop — Stage 2 Wake Up! (500 m)",
+              body: "Destination under 500 m away! Gather your belongings now.",
+              stage: "stage2_500m",
             });
-            // Start vibration independently — NOT tied to audio
             startAlarmVibration("alarm");
-          } else if (nextStage === "critical") {
+          } else if (nextStage === "stage3_100m") {
             notify(
-              "Almost There! — WakeStop",
-              "Destination under 500 m away! Step off the vehicle now!",
+              "🚨 Stage 3 Urgent Arrival! (100 m) — WakeStop",
+              "Under 100 m to destination! Step off vehicle immediately!",
               {
-                tag: "wakestop-alarm-info",
+                tag: "wakestop-stage3",
                 requireInteraction: true,
                 vibrate: [800, 100, 800, 100, 800, 100, 800],
               }
             );
-            triggerAudio(nextStage, {
-              title: "WakeStop — Get Off Now!",
-              body: "Destination under 500 m away! Step off the vehicle immediately!",
+            triggerAudio("stage3_100m", {
+              title: "WakeStop — Get Off Now! (100 m)",
+              body: "Destination under 100 m away! Step off vehicle immediately!",
               stage: "critical",
             });
-            // Critical intensity vibration — independent from audio
             startAlarmVibration("critical");
             manuallyStopped.current = false;
             clearRepeatTimer();
             repeatTimer.current = window.setInterval(() => {
-              triggerAudio("critical", {
-                title: "WakeStop — Get Off Now!",
-                body: "Still approaching your stop! You must step off immediately!",
+              triggerAudio("stage3_100m", {
+                title: "WakeStop — Get Off Now! (100 m)",
+                body: "Under 100 m! Step off vehicle immediately!",
                 stage: "critical",
               });
-              startAlarmVibration("critical"); // keep vibration alive on each repeat
-            }, 15000);
+              startAlarmVibration("critical");
+            }, 12000);
           } else if (nextStage === "arrived") {
             notify(
               "✅ You've Arrived — WakeStop",
@@ -325,7 +318,6 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
       if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
       clearRepeatTimer();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [destination?.lat, destination?.lng, isBatteryCritical]);
 
   const aiEta = calculateDynamicEta(positionHistory, distance);
@@ -338,7 +330,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     acknowledge,
     positionHistory,
     aiEta,
-    adaptiveInfo: adaptiveInfo.current,
+    adaptiveInfo,
     activeThresholds,
     wakeResponseSec,
     batteryRisk,
