@@ -53,10 +53,11 @@ self.addEventListener("message", (event) => {
   const { type, title, body, stage } = event.data;
 
   if (type === "TRIGGER_ALARM_NOTIFICATION") {
-    const isCritical = stage === "critical";
+    const isCritical = stage === "critical" || stage === "stage3_100m";
+    // Rapid high-frequency chat-like haptic pulse vibration pattern
     const vibratePattern = isCritical
-      ? [600, 100, 600, 100, 600, 100, 900]
-      : [400, 150, 400, 150, 400];
+      ? [60, 20, 60, 20, 60, 20, 60, 20, 60, 20, 60, 20, 60, 20, 60, 20]
+      : [80, 35, 80, 35, 80, 35, 80, 35, 80, 35, 80];
 
     event.waitUntil(
       self.registration.showNotification(title || "⏰ WakeStop Alarm!", {

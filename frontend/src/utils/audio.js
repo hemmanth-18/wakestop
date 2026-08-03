@@ -246,10 +246,11 @@ export function unlockAudioContext() {
 //   "critical" intensity → [200, 30] × 6 = 230ms cycle, even more aggressive
 
 const VIBRATE_PATTERNS = {
-  notify:   { pattern: [300, 150, 300], intervalMs: 1000 },
-  alarm:    { pattern: [200, 50, 200, 50, 200, 50, 200, 50, 200, 50],  intervalMs: 1250 },
-  critical: { pattern: [200, 30, 200, 30, 200, 30, 200, 30, 200, 30, 200, 30], intervalMs: 1380 },
-  arrived:  { pattern: [400, 100, 400, 100, 400], intervalMs: 1200 },
+  notify:   { pattern: [100, 40, 100, 40, 100], intervalMs: 600 },
+  alarm:    { pattern: [80, 35, 80, 35, 80, 35, 80, 35, 80, 35, 80], intervalMs: 750 },
+  critical: { pattern: [60, 20, 60, 20, 60, 20, 60, 20, 60, 20, 60, 20, 60, 20, 60, 20], intervalMs: 650 },
+  arrived:  { pattern: [120, 40, 120, 40, 120], intervalMs: 700 },
+  chat_pulse: { pattern: [70, 30, 70, 30, 70, 120, 70, 30, 70, 30, 70], intervalMs: 700 },
 };
 
 let vibrationIntervalId = null;
