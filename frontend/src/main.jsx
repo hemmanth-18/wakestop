@@ -4,11 +4,23 @@ import "leaflet/dist/leaflet.css";
 import "./index.css";
 import App from "./App";
 import { registerAlarmServiceWorker } from "./utils/audio";
+import { registerSW } from "virtual:pwa-register";
 
-// Register the Service Worker for background alarm notifications.
-// SW notifications use the system ringtone channel — rings even when
-// media/music volume is turned all the way down.
-registerAlarmServiceWorker();
+// Register Service Worker in production for offline PWA caching
+if (import.meta.env.PROD) {
+  registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      console.log("WakeStop PWA update available.");
+    },
+    onOfflineReady() {
+      console.log("WakeStop PWA is ready for offline operation.");
+    },
+  });
+} else {
+  // Register alarm service worker for notification channel triggers
+  registerAlarmServiceWorker();
+}
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

@@ -2,19 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
-    <!-- viewport-fit=cover: content fills behind notch/Dynamic Island -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <!-- Prevent double-tap zoom on iOS -->
     <meta name="touch-action" content="manipulation" />
-    <!-- Browser chrome color matches app theme -->
+    
+    <!-- Primary Web & PWA Metadata -->
+    <title>WakeStop — GPS Alarm & Commute Telemetry</title>
+    <meta name="description" content="GPS location tracking bus alarm that wakes you up as your destination approaches." />
+    <meta name="application-name" content="WakeStop" />
     <meta name="theme-color" content="#050811" />
-    <!-- iOS PWA settings -->
+
+    <!-- Android / Chrome Mobile Web App Settings -->
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Apple iOS / Safari PWA Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>WakeStop — Never miss your stop</title>
-    <!-- Press Start 2P 8-bit retro font -->
+    <meta name="apple-mobile-web-app-title" content="WakeStop" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Standard Favicons & PWA Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-512x512.png" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
@@ -24,4 +36,3 @@
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
-
