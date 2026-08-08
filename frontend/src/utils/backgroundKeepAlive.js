@@ -6,6 +6,56 @@
 const SILENT_WAV_BASE64 =
   "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==";
 
+// Generates a 440 Hz sine wave beep WAV as a Blob URL.
+// Used as the alarm sound played through the backgroundAudioElement (screen-off safe).
+function generateAlarmBeepBlobUrl(durationSeconds = 0.5, frequency = 880) {
+  try {
+    const sampleRate = 22050;
+    const numSamples = Math.floor(sampleRate * durationSeconds);
+    const buffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(buffer);
+
+    // WAV header
+    const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + numSamples * 2, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);      // chunk size
+    view.setUint16(20, 1, true);       // PCM
+    view.setUint16(22, 1, true);       // mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);       // block align
+    view.setUint16(34, 16, true);      // bits per sample
+    writeStr(36, 'data');
+    view.setUint32(40, numSamples * 2, true);
+
+    // PCM samples: fast attack, slight fade-out envelope for a sharp alarm beep
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      const envelope = Math.min(1, (i / (sampleRate * 0.01))) * // 10ms attack
+                       Math.max(0, 1 - (i / (numSamples * 0.8))); // 20% fade-out at end
+      const sample = Math.sin(2 * Math.PI * frequency * t) * 0.9 * envelope;
+      view.setInt16(44 + i * 2, Math.round(sample * 32767), true);
+    }
+
+    const blob = new Blob([buffer], { type: 'audio/wav' });
+    return URL.createObjectURL(blob);
+  } catch (e) {
+    return null;
+  }
+}
+
+let cachedAlarmBeepUrl = null;
+
+function getAlarmBeepUrl() {
+  if (!cachedAlarmBeepUrl) {
+    cachedAlarmBeepUrl = generateAlarmBeepBlobUrl(0.4, 880);
+  }
+  return cachedAlarmBeepUrl;
+}
+
 let backgroundAudioElement = null;
 let trackingWorker = null;
 let isKeepAliveActive = false;
@@ -126,13 +176,16 @@ export function startBackgroundAudioKeepAlive(onTickCallback = null) {
 /**
  * Plays an alarm sound directly using the active background audio element.
  * Works when screen is locked because backgroundAudioElement is already active in OS media session.
+ * @param {string|null} audioSrcUrl - URL to play. Defaults to generated alarm beep.
  */
 export function playOnBackgroundAudioElement(audioSrcUrl) {
   if (!backgroundAudioElement) return false;
 
+  const src = audioSrcUrl || getAlarmBeepUrl() || SILENT_WAV_BASE64;
+
   try {
     backgroundAudioElement.pause();
-    backgroundAudioElement.src = audioSrcUrl || SILENT_WAV_BASE64;
+    backgroundAudioElement.src = src;
     backgroundAudioElement.loop = true;
     backgroundAudioElement.volume = 1.0; // Boost volume to 100%
     const playPromise = backgroundAudioElement.play();

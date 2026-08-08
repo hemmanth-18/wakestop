@@ -152,6 +152,8 @@ export async function requestNotificationPermission() {
 // Even with media volume = 0, this keeps ringing until the user dismisses.
 
 let swAlarmIntervalId = null;
+// Stores the current alarm payload so the Web Worker tick can re-fire it
+let _swAlarmPayload = null;
 
 function _postToSw(type, payload = {}) {
   if (!("serviceWorker" in navigator)) return;
@@ -160,6 +162,16 @@ function _postToSw(type, payload = {}) {
       if (reg && reg.active) reg.active.postMessage({ type, ...payload });
     })
     .catch(() => {});
+}
+
+/**
+ * Called by the Web Worker tick to re-fire the current SW alarm notification.
+ * Web Workers are NOT throttled by the OS in background, so this is throttle-proof.
+ * Safe to call even when no alarm is active (no-op).
+ */
+export function fireSwAlarmTick() {
+  if (!_swAlarmPayload) return;
+  _postToSw("TRIGGER_ALARM_NOTIFICATION", _swAlarmPayload);
 }
 
 /**
@@ -176,12 +188,15 @@ function startSwAlarmLoop(title, body, stage, intervalMs = 3000) {
   // Stop any previous loop first
   stopSwAlarmLoop();
 
+  // Save payload so the Web Worker tick can re-fire it (throttle-proof path)
+  _swAlarmPayload = { title, body, stage };
+
   const fire = () => _postToSw("TRIGGER_ALARM_NOTIFICATION", { title, body, stage });
 
   // Fire immediately
   fire();
 
-  // Then keep firing every intervalMs — each call re-rings the system sound
+  // Also keep a main-thread interval as fallback (may be throttled after ~1 min in background)
   swAlarmIntervalId = setInterval(fire, intervalMs);
 }
 
@@ -189,6 +204,7 @@ function startSwAlarmLoop(title, body, stage, intervalMs = 3000) {
  * Stop the SW alarm notification loop and dismiss existing notification.
  */
 function stopSwAlarmLoop() {
+  _swAlarmPayload = null; // clear payload so Web Worker tick becomes a no-op
   if (swAlarmIntervalId) {
     clearInterval(swAlarmIntervalId);
     swAlarmIntervalId = null;
@@ -228,6 +244,15 @@ export function unlockAudioContext() {
   } catch (e) {
     // Silently fail — Web Audio unlock is best-effort
   }
+}
+
+// ── Auto-resume AudioContext on app foreground (fixes alarm after screen-off/app-switch) ──
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && activeAudioCtx && activeAudioCtx.state === "suspended") {
+      activeAudioCtx.resume().catch(() => {});
+    }
+  });
 }
 
 // ─── Independent Vibration Controller ──────────────────────────────────────────────────
@@ -356,8 +381,9 @@ function playSingleToneBurst(preset, stageMultiplier = 1) {
       activeAudioCtx = new AudioContextClass();
     }
     const ctx = activeAudioCtx;
+    // Always resume — context gets auto-suspended when app is backgrounded / screen off
     if (ctx.state === "suspended") {
-      ctx.resume();
+      ctx.resume().catch(() => {});
     }
 
     const now = ctx.currentTime;

@@ -9,18 +9,26 @@ import {
   requestNotificationPermission,
   startAlarmVibration,
   stopAlarmVibration,
+  fireSwAlarmTick,
 } from "../utils/audio";
 import { calculateDynamicEta, calculateAdaptiveThresholds } from "../utils/aiEngine";
 import { getRealBatteryState, evaluateBatteryRisk } from "../utils/batteryPredictor";
 import {
   startBackgroundAudioKeepAlive,
   stopBackgroundAudioKeepAlive,
+  playOnBackgroundAudioElement,
 } from "../utils/backgroundKeepAlive";
+
 
 function triggerAudio(stage, notifOptions = {}) {
   const mult = stage === "stage3_100m" || stage === "critical" ? 1.6 : stage === "stage2_500m" ? 1.3 : 1.0;
   playAlarmSound(getSavedSoundPreset(), mult, 10000, { stage, ...notifOptions });
+  // Simultaneously switch the background audio element (OS media session) to an alarm beep.
+  // This is the ONLY audio path that works when screen is off or app is backgrounded,
+  // because the backgroundAudioElement already has OS hardware audio session privileges.
+  playOnBackgroundAudioElement(); // defaults to generated 880 Hz beep in backgroundKeepAlive.js
 }
+
 
 function notify(title, body, options = {}) {
   if (!("Notification" in window)) return;
@@ -61,6 +69,15 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
   // Dynamic AI Traffic-Adaptive Thresholds calculated continuously based on speed
   const adaptiveInfo = calculateAdaptiveThresholds(tripHistory, { vehicleSpeedKmh: currentSpeedKmh });
   const activeThresholds = customThresholds || adaptiveInfo.thresholds;
+
+  // ── Bug Fix: thresholdsRef keeps the watchPosition callback always reading the
+  // LATEST adaptive thresholds, even though the geolocation effect runs only once.
+  // Without this, the callback closes over the initial value (speed=0 → 1 km)
+  // and never sees the updated 1.6 km highway threshold.
+  const thresholdsRef = useRef(activeThresholds);
+  useEffect(() => {
+    thresholdsRef.current = activeThresholds;
+  });
 
   const clearRepeatTimer = () => {
     if (repeatTimer.current) {
@@ -136,6 +153,12 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
     requestLock();
     // Start background audio keep-alive + Web Worker ticker for continuous screen-off GPS tracking
     startBackgroundAudioKeepAlive(() => {
+      // ── Throttle-proof SW notification re-fire ──────────────────────────────
+      // Web Workers are NOT throttled by the OS in background (unlike main thread setInterval).
+      // This fires the SW alarm notification every 3s even when the user is in Instagram.
+      fireSwAlarmTick();
+
+      // Also refresh GPS position on each worker tick
       if (destination && "geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -216,7 +239,7 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
         const d = distanceMetres(pos.coords.latitude, pos.coords.longitude, destination.lat, destination.lng);
         setDistance(d);
 
-        const t = activeThresholds;
+        const t = thresholdsRef.current; // always read latest speed-adaptive thresholds
         let nextStage = stage;
 
         if (manuallyStopped.current) {
