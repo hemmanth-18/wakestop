@@ -34,5 +34,6 @@ CREATE TABLE IF NOT EXISTS group_members (
 CREATE INDEX IF NOT EXISTS idx_groups_code ON groups(code);
 CREATE INDEX IF NOT EXISTS idx_group_members_code ON group_members(group_code);
 
--- Auto-cleanup expired groups (optional: run as a scheduled Supabase function)
--- DELETE FROM groups WHERE expires_at < NOW();
+-- Update trips table to store group travel metadata
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS group_code VARCHAR(6) DEFAULT NULL;
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS destinations JSONB DEFAULT '[]'::jsonb;

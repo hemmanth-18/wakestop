@@ -8,7 +8,7 @@ router.use(requireAuth);
 
 router.post("/start", async (req, res) => {
   try {
-    const { destinationName, destinationLat, destinationLng, startName, startLat, startLng, destination } = req.body || {};
+    const { destinationName, destinationLat, destinationLng, startName, startLat, startLng, destination, groupCode, destinations } = req.body || {};
     const destName = destinationName || destination?.name;
     const destLat = destinationLat ?? destination?.lat;
     const destLng = destinationLng ?? destination?.lng;
@@ -22,6 +22,8 @@ router.post("/start", async (req, res) => {
       userId: req.userId,
       start: { name: startName || destination?.startName || "Current location", lat: startLat ?? null, lng: startLng ?? null },
       destination: { name: destName, lat: destLat, lng: destLng },
+      groupCode: groupCode || null,
+      destinations: Array.isArray(destinations) ? destinations : [],
       startTime: new Date().toISOString(),
       endTime: null,
       status: "active",

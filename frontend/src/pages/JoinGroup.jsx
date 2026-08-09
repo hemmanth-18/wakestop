@@ -79,11 +79,13 @@ export default function JoinGroup() {
 
   const pin = pinDigits.join("");
 
-  const launchTrackingForMember = async (groupCode, destination) => {
+  const launchTrackingForMember = async (groupCode, destination, dests = groupDestinations) => {
     const trip = await api.startTrip(token, {
       destinationName: destination.name,
       destinationLat: destination.lat,
       destinationLng: destination.lng,
+      groupCode: groupCode,
+      destinations: dests,
     });
     nav(`/tracking/${trip.id}`, {
       state: { trip: { id: trip.id, destination }, groupCode },

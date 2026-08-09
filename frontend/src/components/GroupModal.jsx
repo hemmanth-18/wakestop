@@ -136,6 +136,8 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
         destinationName: res.destination.name,
         destinationLat: res.destination.lat,
         destinationLng: res.destination.lng,
+        groupCode: res.code,
+        destinations: res.destinations || destList,
       });
       const shareLink = `${window.location.origin}/join/${res.code}`;
       setCreatedGroup({ code: res.code, pin: res.pin, link: shareLink, tripId: trip.id, destinations: res.destinations });
@@ -229,6 +231,8 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
         destinationName: chosenDest.name,
         destinationLat: chosenDest.lat,
         destinationLng: chosenDest.lng,
+        groupCode: res.code,
+        destinations: res.destinations || joinDestinations,
       });
       nav(`/tracking/${trip.id}`, {
         state: { trip: { id: trip.id, destination: chosenDest }, groupCode: res.code },

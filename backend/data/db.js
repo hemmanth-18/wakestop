@@ -81,6 +81,8 @@ function mapTripRow(t) {
     startTime: t.start_time || t.startTime,
     endTime: t.end_time || t.endTime,
     status: t.status,
+    groupCode: t.group_code || t.groupCode || null,
+    destinations: t.destinations || [],
     wakeResponseSec: t.wake_response_sec ?? t.wakeResponseSec ?? null,
   };
 }
@@ -245,6 +247,8 @@ export const db = {
           destination_name: trip.destination.name,
           destination_lat: trip.destination.lat,
           destination_lng: trip.destination.lng,
+          group_code: trip.groupCode || null,
+          destinations: trip.destinations || [],
           start_time: trip.startTime,
           end_time: trip.endTime,
           status: trip.status,
