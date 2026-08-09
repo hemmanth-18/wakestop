@@ -10,18 +10,29 @@ import com.getcapacitor.BridgeActivity;
 import java.util.List;
 
 public class MainActivity extends BridgeActivity {
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 1. Direct hardware volume controls to STREAM_ALARM channel
+        // Direct hardware volume rocker controls to STREAM_ALARM channel
         setVolumeControlStream(AudioManager.STREAM_ALARM);
 
-        // 2. Direct Built-In Speaker Loudspeaker & Max Hardware Audio Override (FindHub / Emergency Alert style)
+        // Boost all volume channels to 100% MAX hardware level
+        boostAllAudioStreamsToMax();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        boostAllAudioStreamsToMax();
+    }
+
+    private void boostAllAudioStreamsToMax() {
         try {
             AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
             if (audioManager != null) {
-                // Force audio output directly to phone's physical built-in speaker
+                // 1. Force audio output directly to phone's physical built-in speaker
                 audioManager.setMode(AudioManager.MODE_NORMAL);
                 audioManager.setSpeakerphoneOn(true);
 
@@ -36,10 +47,18 @@ public class MainActivity extends BridgeActivity {
                     }
                 }
 
-                // Automatically boost Alarm volume channel to 100% MAX
+                // 2. Maximize ALL hardware audio streams (ALARM + MEDIA/MUSIC + NOTIFICATION)
+                // This guarantees loud audio output regardless of whether Android routes to Media or Alarm
                 int maxAlarmVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM);
                 audioManager.setStreamVolume(AudioManager.STREAM_ALARM, maxAlarmVol, 0);
 
+                int maxMusicVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxMusicVol, 0);
+
+                int maxNotifVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION);
+                audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, maxNotifVol, 0);
+
+                // 3. Request USAGE_ALARM Audio Focus
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     AudioAttributes playbackAttributes = new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ALARM)
