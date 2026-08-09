@@ -8,8 +8,8 @@ if (fs.existsSync(path.join(process.cwd(), "backend", ".env"))) {
   dotenv.config({ path: path.join(process.cwd(), "backend", ".env") });
 }
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || "https://iyopwqdzsyqjvpqskpna.supabase.co";
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "sb_publishable_08iOI-cbjid0d3kz_pQQOQ_oTPoJblA";
 
 if (!supabaseUrl || !supabaseKey) {
   console.error("❌ CRITICAL ERROR: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required in environment!");
