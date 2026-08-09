@@ -9,8 +9,8 @@
 To get the ready-to-install **WakeStop Android APK file (`app-debug.apk`)** with FindHub-style emergency hardware alarm volume overrides (`USAGE_ALARM` at 100% max volume), reach out to the team on LinkedIn:
 
 - 👨‍💻 **Hemmanth G**: [linkedin.com/in/hemmanth-g-2115aa328](https://www.linkedin.com/in/hemmanth-g-2115aa328/)
-- 👨‍💻 **Pranesh S**: [linkedin.com/in/pranesh-s-30659b339](https://www.linkedin.com/in/pranesh-s-30659b339/)
 - 👩‍💻 **Tharikashri S K**: [linkedin.com/in/tharikashri-s-k-b742a9339](https://www.linkedin.com/in/tharikashri-s-k-b742a9339/)
+- 👨‍💻 **Pranesh S**: [linkedin.com/in/pranesh-s-30659b339](https://www.linkedin.com/in/pranesh-s-30659b339/)
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=flat-square)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&style=flat-square)
