@@ -236,6 +236,33 @@ export default function Tracking() {
             </button>
           )}
 
+          {/* Target Drop-off Stop Switcher for Group Trip */}
+          {groupCode && groupDestinations.length > 1 && (
+            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+              <span className="text-xs font-semibold text-neon-cyan whitespace-nowrap">
+                Switch Target Stop:
+              </span>
+              {groupDestinations.map((d, i) => {
+                const isActiveStop = (trip?.destination?.id === d.id || trip?.destination?.name === d.name);
+                return (
+                  <button
+                    key={d.id || i}
+                    onClick={() => {
+                      setTrip((prev) => prev ? { ...prev, destination: d } : prev);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border ${
+                      isActiveStop
+                        ? "border-neon-cyan bg-neon-cyan/20 text-white shadow-[0_0_12px_rgba(0,240,255,0.4)]"
+                        : "border-night-700 bg-night-900 text-night-400 hover:border-night-600"
+                    }`}
+                  >
+                    #{i + 1} {d.name} {isActiveStop ? "✓" : ""}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Settings & Host Dissolve Actions */}
           <div className="mt-3 flex flex-col sm:flex-row items-center gap-2">
             <button

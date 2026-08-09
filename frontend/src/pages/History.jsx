@@ -14,11 +14,19 @@ const IconUsers = () => (
   </svg>
 );
 
+const IconUser = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
 export default function History() {
   const { token } = useAuth();
   const nav = useNavigate();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterTab, setFilterTab] = useState("all"); // "all" | "solo" | "group"
 
   // Resume stop-picker modal state
   const [selectedTripForResume, setSelectedTripForResume] = useState(null);
@@ -33,11 +41,12 @@ export default function History() {
   }, [token]);
 
   const handleResumeClick = (trip) => {
+    const isGroup = Boolean(trip.groupCode || (Array.isArray(trip.destinations) && trip.destinations.length > 1));
     const destList = Array.isArray(trip.destinations) && trip.destinations.length > 0
       ? trip.destinations
       : (trip.destination ? [trip.destination] : []);
 
-    if (destList.length > 1 || trip.groupCode) {
+    if (isGroup || destList.length > 1) {
       setSelectedTripForResume(trip);
       setChosenStopId(destList[0]?.id || "dest-1");
     } else {
@@ -62,6 +71,15 @@ export default function History() {
     setSelectedTripForResume(null);
   };
 
+  const soloTrips = trips.filter((t) => !t.groupCode && (!Array.isArray(t.destinations) || t.destinations.length <= 1));
+  const groupTrips = trips.filter((t) => Boolean(t.groupCode || (Array.isArray(t.destinations) && t.destinations.length > 1)));
+
+  const filteredTrips = filterTab === "solo"
+    ? soloTrips
+    : filterTab === "group"
+    ? groupTrips
+    : trips;
+
   return (
     <div className="relative min-h-[calc(100vh-64px)] px-3 sm:px-4 py-6 sm:py-8">
       <ThunderNeonCanvas />
@@ -76,7 +94,7 @@ export default function History() {
             <div>
               <h3 className="font-display text-base font-extrabold text-white">Select Drop-off Stop</h3>
               <p className="text-xs text-night-400 mt-0.5">
-                This was a Group Trip with multiple stops. Which stop are you tracking towards?
+                Which of the host's 3 drop-off stops are you tracking towards?
               </p>
             </div>
 
@@ -124,13 +142,49 @@ export default function History() {
       <div className="relative z-10 mx-auto max-w-xl md:max-w-4xl lg:max-w-5xl">
         <div className="glass-panel-gold rounded-3xl p-5 sm:p-8">
           {/* Header */}
-          <div className="flex items-center gap-3 border-b border-night-700 pb-4 sm:pb-5">
-            <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-neon-gold/20 text-neon-gold shadow-[0_0_15px_rgba(255,184,0,0.3)]">
-              <HistoryIcon size={22} />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-night-700 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-neon-gold/20 text-neon-gold shadow-[0_0_15px_rgba(255,184,0,0.3)]">
+                <HistoryIcon size={22} />
+              </div>
+              <div>
+                <h1 className="font-display text-xl sm:text-2xl font-extrabold text-white">Trip History</h1>
+                <p className="mt-0.5 text-xs text-night-500">Every journey WakeStop has watched over.</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-display text-xl sm:text-2xl font-extrabold text-white">Trip History</h1>
-              <p className="mt-0.5 text-xs text-night-500">Every journey WakeStop has watched over.</p>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center rounded-xl border border-night-700 bg-night-900/90 p-1 gap-1">
+              <button
+                onClick={() => setFilterTab("all")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  filterTab === "all"
+                    ? "bg-neon-gold text-night-950 shadow-[0_0_10px_rgba(255,184,0,0.3)]"
+                    : "text-night-400 hover:text-white"
+                }`}
+              >
+                All ({trips.length})
+              </button>
+              <button
+                onClick={() => setFilterTab("solo")}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  filterTab === "solo"
+                    ? "bg-neon-cyan text-night-950 shadow-[0_0_10px_rgba(0,240,255,0.3)]"
+                    : "text-night-400 hover:text-white"
+                }`}
+              >
+                <IconUser /> Solo ({soloTrips.length})
+              </button>
+              <button
+                onClick={() => setFilterTab("group")}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  filterTab === "group"
+                    ? "bg-neon-purple text-white shadow-[0_0_10px_rgba(176,38,255,0.3)]"
+                    : "text-night-400 hover:text-white"
+                }`}
+              >
+                <IconUsers /> Group ({groupTrips.length})
+              </button>
             </div>
           </div>
 
@@ -142,10 +196,16 @@ export default function History() {
           )}
 
           {/* Empty state */}
-          {!loading && trips.length === 0 && (
+          {!loading && filteredTrips.length === 0 && (
             <div className="mt-8 rounded-2xl border border-dashed border-night-700 p-8 text-center bg-night-950/60">
               <HistoryIcon size={32} className="mx-auto mb-3 text-night-600" />
-              <p className="text-sm text-night-500">No journeys recorded yet.</p>
+              <p className="text-sm text-night-500">
+                {filterTab === "solo"
+                  ? "No solo trips recorded yet."
+                  : filterTab === "group"
+                  ? "No group trips recorded yet."
+                  : "No journeys recorded yet."}
+              </p>
               <Link
                 to="/select-destination"
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-neon-gold px-5 py-3 font-display text-xs font-bold text-night-950 shadow-[0_0_15px_rgba(255,184,0,0.3)]"
@@ -157,7 +217,7 @@ export default function History() {
 
           {/* Trip list — responsive 2-column grid on desktop */}
           <ul className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {trips.map((trip) => {
+            {filteredTrips.map((trip) => {
               const isGroup = Boolean(trip.groupCode || (Array.isArray(trip.destinations) && trip.destinations.length > 1));
               return (
                 <li
@@ -174,10 +234,15 @@ export default function History() {
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {isGroup && (
+                        {isGroup ? (
                           <span className="flex items-center gap-1 rounded-full bg-neon-purple/20 border border-neon-purple/40 px-2 py-0.5 text-[10px] text-neon-purple font-mono font-bold">
                             <IconUsers />
-                            Group
+                            Group Trip
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 rounded-full bg-neon-cyan/20 border border-neon-cyan/40 px-2 py-0.5 text-[10px] text-neon-cyan font-mono font-bold">
+                            <IconUser />
+                            Solo Trip
                           </span>
                         )}
                         <span

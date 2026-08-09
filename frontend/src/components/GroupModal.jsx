@@ -78,6 +78,8 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
   const [pinDigits, setPinDigits] = useState(["", "", "", "", "", ""]);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState(null);
+  const [joinDestinations, setJoinDestinations] = useState([]);
+  const [joinSelectedStopId, setJoinSelectedStopId] = useState(null);
 
   const pinRefs = useRef([]);
 
@@ -180,24 +182,44 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
     onClose();
   };
 
-  const handleJoin = async () => {
+  const handleVerifyJoin = async () => {
     if (!joinCode.trim()) { setJoinError("Please enter the group code."); return; }
     if (pin.length !== 6) { setJoinError("Please enter the full 6-digit PIN."); return; }
     setJoining(true);
     setJoinError(null);
     try {
       const res = await groupApi.join(token, joinCode.trim().toUpperCase(), pin, user?.name || "Member");
+      const dests = Array.isArray(res.destinations) && res.destinations.length > 0
+        ? res.destinations
+        : [res.destination];
+
+      setJoinDestinations(dests);
+      setJoinSelectedStopId(dests[0]?.id || "dest-1");
+    } catch (err) {
+      setJoinError(err.message || "Could not join group");
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const handleConfirmJoin = async () => {
+    if (!joinCode.trim() || pin.length !== 6) return;
+    setJoining(true);
+    setJoinError(null);
+    try {
+      const res = await groupApi.join(token, joinCode.trim().toUpperCase(), pin, user?.name || "Member", joinSelectedStopId);
+      const chosenDest = (res.destinations || joinDestinations).find((d) => d.id === joinSelectedStopId) || res.destination;
       const trip = await api.startTrip(token, {
-        destinationName: res.destination.name,
-        destinationLat: res.destination.lat,
-        destinationLng: res.destination.lng,
+        destinationName: chosenDest.name,
+        destinationLat: chosenDest.lat,
+        destinationLng: chosenDest.lng,
       });
       nav(`/tracking/${trip.id}`, {
-        state: { trip: { id: trip.id, destination: res.destination }, groupCode: res.code },
+        state: { trip: { id: trip.id, destination: chosenDest }, groupCode: res.code },
       });
       onClose();
     } catch (err) {
-      setJoinError(err.message || "Could not join group");
+      setJoinError(err.message || "Could not confirm join");
     } finally {
       setJoining(false);
     }
@@ -409,69 +431,116 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
         {/* ── JOIN TAB ─────────────────────────────────────────────────────── */}
         {tab === "join" && (
           <div className="px-5 pb-5 space-y-4">
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider text-neon-cyan mb-1.5">
-                Group Code
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. WS4821"
-                maxLength={6}
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                className="w-full rounded-xl border border-night-700 bg-night-900 px-4 py-3 font-mono text-center text-xl font-extrabold uppercase tracking-widest text-white placeholder-night-600 focus:border-neon-cyan focus:outline-none focus:ring-1 focus:ring-neon-cyan/40 transition-all"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="text-neon-purple"><IconLock /></span>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-neon-purple">
-                  6-digit PIN
-                </label>
-              </div>
-              {/* PIN grid — 6 equal boxes, no overflow */}
-              <div className="grid grid-cols-6 gap-1.5" onPaste={handlePinPaste}>
-                {pinDigits.map((digit, idx) => (
+            {joinDestinations.length === 0 ? (
+              <>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-neon-cyan mb-1.5">
+                    Group Code
+                  </label>
                   <input
-                    key={idx}
-                    ref={(el) => (pinRefs.current[idx] = el)}
                     type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handlePinChange(idx, e.target.value)}
-                    onKeyDown={(e) => handlePinKeyDown(idx, e)}
-                    className="h-12 w-full rounded-xl border border-night-700 bg-night-900 text-center font-mono text-xl font-extrabold text-neon-purple focus:border-neon-purple focus:outline-none focus:ring-1 focus:ring-neon-purple/40 transition-all caret-transparent"
+                    placeholder="e.g. WS4821"
+                    maxLength={6}
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    className="w-full rounded-xl border border-night-700 bg-night-900 px-4 py-3 font-mono text-center text-xl font-extrabold uppercase tracking-widest text-white placeholder-night-600 focus:border-neon-cyan focus:outline-none focus:ring-1 focus:ring-neon-cyan/40 transition-all"
                   />
-                ))}
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="text-neon-purple"><IconLock /></span>
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-neon-purple">
+                      6-digit PIN
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1.5" onPaste={handlePinPaste}>
+                    {pinDigits.map((digit, idx) => (
+                      <input
+                        key={idx}
+                        ref={(el) => (pinRefs.current[idx] = el)}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handlePinChange(idx, e.target.value)}
+                        onKeyDown={(e) => handlePinKeyDown(idx, e)}
+                        className="h-11 w-full rounded-xl border border-night-700 bg-night-900 text-center font-mono text-lg font-extrabold text-neon-purple focus:border-neon-purple focus:outline-none transition-all caret-transparent"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {joinError && (
+                  <p className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-xs text-alert-500">
+                    {joinError}
+                  </p>
+                )}
+
+                <button
+                  onClick={handleVerifyJoin}
+                  disabled={joining || !joinCode.trim() || pin.length !== 6}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-neon-purple py-3.5 text-sm font-extrabold text-white shadow-[0_0_20px_rgba(176,38,255,0.4)] hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                >
+                  <IconLink />
+                  {joining ? "Verifying PIN…" : "Verify PIN & Choose Stop"}
+                </button>
+              </>
+            ) : (
+              /* Step 2: Stop Picker UI after PIN verification */
+              <div className="space-y-3">
+                <div className="rounded-xl border border-neon-cyan/40 bg-neon-cyan/10 p-3 space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-neon-cyan">
+                    Select YOUR Drop-off Stop ({joinDestinations.length} available)
+                  </p>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {joinDestinations.map((d, i) => (
+                      <button
+                        key={d.id || i}
+                        type="button"
+                        onClick={() => setJoinSelectedStopId(d.id)}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                          joinSelectedStopId === d.id
+                            ? "border-neon-cyan bg-neon-cyan/20 text-white shadow-[0_0_10px_rgba(0,240,255,0.3)]"
+                            : "border-night-700 bg-night-900 text-night-300 hover:border-night-600"
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-neon-cyan/20 text-[9px] text-neon-cyan font-extrabold">
+                            #{i + 1}
+                          </span>
+                          <span className="truncate">{d.name}</span>
+                        </span>
+                        {joinSelectedStopId === d.id && <span className="text-neon-cyan text-xs">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {joinError && (
+                  <p className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-xs text-alert-500">
+                    {joinError}
+                  </p>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setJoinDestinations([])}
+                    className="rounded-xl border border-night-700 bg-night-900 py-3 text-xs font-semibold text-night-400 hover:text-white"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    onClick={handleConfirmJoin}
+                    disabled={joining}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-neon-purple py-3 text-xs font-extrabold text-white shadow-[0_0_15px_rgba(176,38,255,0.4)] hover:shadow-[0_0_25px_rgba(176,38,255,0.6)] transition-all active:scale-95"
+                  >
+                    <IconPlay />
+                    Join &amp; Track
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {joinError && (
-              <p className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-xs text-alert-500">
-                {joinError}
-              </p>
             )}
-
-            <button
-              onClick={handleJoin}
-              disabled={joining || joinCode.length < 4 || pin.length !== 6}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-neon-purple py-3.5 text-sm font-extrabold text-white shadow-[0_0_20px_rgba(176,38,255,0.4)] hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-            >
-              {joining ? (
-                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <IconCheck />
-              )}
-              {joining ? "Joining…" : "Join Group & Start Tracking"}
-            </button>
-
-            <p className="text-center text-[10px] text-night-600">
-              Ask the trip host for the code and PIN
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
