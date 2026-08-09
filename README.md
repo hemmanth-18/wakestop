@@ -4,12 +4,19 @@
 
 🌐 **Live Web App**: [https://wakestop.vercel.app](https://wakestop.vercel.app)
 
-WakeStop tracks your live GPS position on long-distance bus journeys and wakes you with an escalating alarm as your stop approaches — designed for the TNSTC/SETC "I fell asleep on the overnight bus" problem.
+## 📱 Android APK App Version
+
+To get the ready-to-install **WakeStop Android APK file (`app-debug.apk`)** with FindHub-style emergency hardware alarm volume overrides (`USAGE_ALARM` at 100% max volume), reach out to the team on LinkedIn:
+
+- 👨‍💻 **Hemmanth G**: [linkedin.com/in/hemmanth-g-2115aa328](https://www.linkedin.com/in/hemmanth-g-2115aa328/)
+- 👨‍💻 **Pranesh S**: [linkedin.com/in/pranesh-s-30659b339](https://www.linkedin.com/in/pranesh-s-30659b339/)
+- 👩‍💻 **Tharikashri S K**: [linkedin.com/in/tharikashri-s-k-b742a9339](https://www.linkedin.com/in/tharikashri-s-k-b742a9339/)
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=flat-square)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&style=flat-square)
 ![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white&style=flat-square)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white&style=flat-square)
+![Capacitor](https://img.shields.io/badge/Capacitor-Android-119EFF?logo=capacitor&logoColor=white&style=flat-square)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-000000?logo=vercel&logoColor=white&style=flat-square)
 
 ## Project Structure
