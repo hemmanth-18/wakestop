@@ -3,20 +3,27 @@ package com.wakestop.app;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
 
 public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(AlarmStreamPlugin.class);
         super.onCreate(savedInstanceState);
 
-        // 1. Direct phone physical volume rocker buttons strictly to STREAM_ALARM
+        // Direct hardware volume rocker buttons strictly to STREAM_ALARM channel
         setVolumeControlStream(AudioManager.STREAM_ALARM);
 
-        // 2. Bind audio routing strictly to phone's STREAM_ALARM channel
         bindToAlarmVolumeStream();
     }
 
@@ -30,10 +37,8 @@ public class MainActivity extends BridgeActivity {
         try {
             AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
             if (audioManager != null) {
-                // Ensure audio mode is normal so STREAM_ALARM operates as designed
                 audioManager.setMode(AudioManager.MODE_NORMAL);
 
-                // Request USAGE_ALARM focus so all playback strictly depends on the user's Alarm Volume setting
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     AudioAttributes playbackAttributes = new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ALARM)
@@ -51,6 +56,57 @@ public class MainActivity extends BridgeActivity {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+}
+
+@CapacitorPlugin(name = "AlarmStream")
+class AlarmStreamPlugin extends Plugin {
+    private static Ringtone alarmRingtone;
+
+    @PluginMethod
+    public void playAlarm(PluginCall call) {
+        try {
+            if (alarmRingtone != null && alarmRingtone.isPlaying()) {
+                alarmRingtone.stop();
+            }
+
+            Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+            if (alarmUri == null) {
+                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            }
+
+            alarmRingtone = RingtoneManager.getRingtone(getContext(), alarmUri);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && alarmRingtone != null) {
+                alarmRingtone.setLooping(true);
+            }
+
+            if (alarmRingtone != null) {
+                AudioAttributes aa = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build();
+
+                alarmRingtone.setAudioAttributes(aa);
+                alarmRingtone.play();
+            }
+
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Failed to play alarm on STREAM_ALARM: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void stopAlarm(PluginCall call) {
+        try {
+            if (alarmRingtone != null && alarmRingtone.isPlaying()) {
+                alarmRingtone.stop();
+            }
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Failed to stop alarm: " + e.getMessage());
         }
     }
 }

@@ -355,6 +355,17 @@ export function stopAlarmSound() {
   // Stop the repeating SW notification loop
   stopSwAlarmLoop();
 
+  // Stop native Android STREAM_ALARM ringtone
+  if (typeof window !== "undefined" && window.Capacitor?.isNativePlatform()) {
+    try {
+      if (window.Capacitor.Plugins?.AlarmStream?.stopAlarm) {
+        window.Capacitor.Plugins.AlarmStream.stopAlarm();
+      }
+    } catch (e) {
+      console.warn("Capacitor AlarmStream stop error:", e);
+    }
+  }
+
   if (currentLoopTimer) {
     clearInterval(currentLoopTimer);
     currentLoopTimer = null;
@@ -590,6 +601,17 @@ export function playAlarmSound(
     stage,
     stage === "notify" || stage === "arrived" ? 5000 : 3000
   );
+
+  // Native Android STREAM_ALARM stream playback (bypasses Media volume, uses Alarm volume)
+  if (typeof window !== "undefined" && window.Capacitor?.isNativePlatform()) {
+    try {
+      if (window.Capacitor.Plugins?.AlarmStream?.playAlarm) {
+        window.Capacitor.Plugins.AlarmStream.playAlarm();
+      }
+    } catch (e) {
+      console.warn("Capacitor AlarmStream play error:", e);
+    }
+  }
 
   // ── Layer 3: Web Audio API (in-app, boosted volume) ─────────────────────────────────
   const customAlarms = getCustomAlarms();
