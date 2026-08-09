@@ -210,7 +210,7 @@ router.get("/:code/state", requireAuth, async (req, res) => {
     const code = req.params.code.toUpperCase();
 
     const [groupRes, membersRes] = await Promise.all([
-      supabase.from("groups").select("alarm_stage, destination_name, destination_lat, destination_lng, destinations, expires_at").eq("code", code).maybeSingle(),
+      supabase.from("groups").select("alarm_stage, destination_name, destination_lat, destination_lng, destinations, host_user_id, expires_at").eq("code", code).maybeSingle(),
       supabase.from("group_members").select("user_id, display_name, selected_destination_id, lat, lng, last_updated").eq("group_code", code),
     ]);
 
@@ -235,6 +235,7 @@ router.get("/:code/state", requireAuth, async (req, res) => {
 
     return res.json({
       alarmStage: groupRes.data.alarm_stage,
+      hostUserId: groupRes.data.host_user_id,
       members,
       destinations: destList,
       destination: destList[0],

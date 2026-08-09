@@ -11,6 +11,7 @@ import { BatteryRiskCard } from "../components/BatteryRiskCard";
 import { formatDistance } from "../utils/geo";
 import { fetchOsrmRoute } from "../services/routing";
 import { api } from "../services/api";
+import { groupApi } from "../services/groupApi";
 import { useAuth } from "../context/AuthContext";
 import { SlidersIcon, NavigationIcon, ZapIcon, ClockIcon, BellIcon } from "../components/Icons";
 import { getSavedSoundPreset, getVibrationEnabled, getAllSoundOptions } from "../utils/audio";
@@ -87,12 +88,27 @@ export default function Tracking() {
   } = useGeoTracking(destination, null, tripHistory);
 
   // Group sync — polls every 3s when in group mode
-  const { members, groupAlarmStage, memberCount, isGroupActive } = useGroupSync(
+  const { members, destinations: groupDestinations, groupAlarmStage, hostUserId, memberCount, isGroupActive } = useGroupSync(
     groupCode,
     token,
     stage,
     position ? { lat: position.latitude, lng: position.longitude } : null
   );
+
+  const isHost = groupCode && (hostUserId === user?.id || !hostUserId);
+
+  const handleDissolveGroup = async () => {
+    if (!groupCode || !token) return;
+    if (window.confirm("Stop trip for everyone in the group and end session?")) {
+      try {
+        await groupApi.dissolve(token, groupCode);
+        if (trip) await api.endTrip(token, trip.id);
+        nav("/select-destination");
+      } catch (err) {
+        alert(err.message || "Could not dissolve group");
+      }
+    }
+  };
 
   useEffect(() => {
     if (!trip && token && id) {
@@ -220,14 +236,25 @@ export default function Tracking() {
             </button>
           )}
 
-          {/* Settings button — full-width on mobile */}
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="mt-3 flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl border border-neon-cyan/40 bg-neon-cyan/10 px-4 py-2.5 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all sm:inline-flex sm:w-auto"
-          >
-            <SlidersIcon size={15} />
-            Alarm Sound &amp; Vibrate
-          </button>
+          {/* Settings & Host Dissolve Actions */}
+          <div className="mt-3 flex flex-col sm:flex-row items-center gap-2">
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl border border-neon-cyan/40 bg-neon-cyan/10 px-4 py-2.5 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all"
+            >
+              <SlidersIcon size={15} />
+              Alarm Sound &amp; Vibrate
+            </button>
+
+            {groupCode && isHost && (
+              <button
+                onClick={handleDissolveGroup}
+                className="flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl border border-alert-500/50 bg-alert-500/10 px-4 py-2.5 text-xs font-bold text-alert-500 hover:bg-alert-500/20 transition-all"
+              >
+                🛑 Stop Trip for Everyone (Dissolve Group)
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── 3-Stage Milestone Progress Bar ── */}
