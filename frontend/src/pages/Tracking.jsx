@@ -188,8 +188,14 @@ export default function Tracking() {
                 </span>
                 {/* Group mode badge */}
                 {groupCode && (
-                  <span className="rounded-full bg-neon-purple/20 border border-neon-purple/40 px-2 py-0.5 text-[10px] text-neon-purple font-mono font-bold">
-                    👥 Group: {groupCode} · {memberCount} member{memberCount !== 1 ? "s" : ""}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-neon-purple/20 border border-neon-purple/40 px-2 py-0.5 text-[10px] text-neon-purple font-mono font-bold">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Group: {groupCode} · {memberCount} member{memberCount !== 1 ? "s" : ""}
                   </span>
                 )}
               </div>

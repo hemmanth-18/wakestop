@@ -4,26 +4,66 @@ import { useAuth } from "../context/AuthContext";
 import { groupApi } from "../services/groupApi";
 import { api } from "../services/api";
 
-/**
- * GroupModal — Create or Join a group trip.
- *
- * Props:
- *   isOpen        {boolean}
- *   onClose       {() => void}
- *   destination   {{ name, lat, lng }} - set when HOST is creating a group
- */
+// ── SVG Icons ──────────────────────────────────────────────────────────────
+const IconUsers = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+const IconLink = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </svg>
+);
+const IconSparkle = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3L9.5 9.5 3 12l6.5 2.5L12 21l2.5-6.5L21 12l-6.5-2.5z"/>
+  </svg>
+);
+const IconLock = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+);
+const IconShare = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+    <polyline points="16 6 12 2 8 6"/>
+    <line x1="12" y1="2" x2="12" y2="15"/>
+  </svg>
+);
+const IconPlay = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="5 3 19 12 5 21 5 3"/>
+  </svg>
+);
+const IconX = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+const IconCheck = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
 export default function GroupModal({ isOpen, onClose, destination }) {
   const { token, user } = useAuth();
   const nav = useNavigate();
 
-  const [tab, setTab] = useState(destination ? "create" : "join"); // "create" | "join"
+  const [tab, setTab] = useState(destination ? "create" : "join");
 
-  // Create tab state
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
-  const [createdGroup, setCreatedGroup] = useState(null); // { code, pin, link }
+  const [createdGroup, setCreatedGroup] = useState(null);
 
-  // Join tab state
   const [joinCode, setJoinCode] = useState("");
   const [pinDigits, setPinDigits] = useState(["", "", "", "", "", ""]);
   const [joining, setJoining] = useState(false);
@@ -33,15 +73,12 @@ export default function GroupModal({ isOpen, onClose, destination }) {
 
   if (!isOpen) return null;
 
-  // ── PIN input handlers ────────────────────────────────────────────────────
   const handlePinChange = (idx, val) => {
     const digit = val.replace(/\D/g, "").slice(-1);
     const next = [...pinDigits];
     next[idx] = digit;
     setPinDigits(next);
-    if (digit && idx < 5) {
-      pinRefs.current[idx + 1]?.focus();
-    }
+    if (digit && idx < 5) pinRefs.current[idx + 1]?.focus();
   };
 
   const handlePinKeyDown = (idx, e) => {
@@ -61,30 +98,17 @@ export default function GroupModal({ isOpen, onClose, destination }) {
 
   const pin = pinDigits.join("");
 
-  // ── Create Group ──────────────────────────────────────────────────────────
   const handleCreate = async () => {
-    if (!destination) {
-      setCreateError("Please select a destination first.");
-      return;
-    }
+    if (!destination) { setCreateError("Please select a destination first."); return; }
     setCreating(true);
     setCreateError(null);
     try {
-      const res = await groupApi.create(
-        token,
-        destination.name,
-        destination.lat,
-        destination.lng,
-        user?.name || "Host"
-      );
-
-      // Start the host's own trip
+      const res = await groupApi.create(token, destination.name, destination.lat, destination.lng, user?.name || "Host");
       const trip = await api.startTrip(token, {
         destinationName: destination.name,
         destinationLat: destination.lat,
         destinationLng: destination.lng,
       });
-
       const shareLink = `${window.location.origin}/join/${res.code}`;
       setCreatedGroup({ code: res.code, pin: res.pin, link: shareLink, tripId: trip.id });
     } catch (err) {
@@ -96,7 +120,7 @@ export default function GroupModal({ isOpen, onClose, destination }) {
 
   const handleShare = () => {
     if (!createdGroup) return;
-    const text = `🚌 Join my WakeStop group trip!\n\nGroup Code: ${createdGroup.code}\nPIN: ${createdGroup.pin}\n\nOr tap this link:\n${createdGroup.link}`;
+    const text = `Join my WakeStop group trip!\n\nGroup Code: ${createdGroup.code}\nPIN: ${createdGroup.pin}\n\nOr tap this link:\n${createdGroup.link}`;
     if (navigator.share) {
       navigator.share({ title: "WakeStop Group Trip", text }).catch(() => {});
     } else {
@@ -109,46 +133,27 @@ export default function GroupModal({ isOpen, onClose, destination }) {
     if (!createdGroup) return;
     nav(`/tracking/${createdGroup.tripId}`, {
       state: {
-        trip: {
-          id: createdGroup.tripId,
-          destination: { name: destination.name, lat: destination.lat, lng: destination.lng },
-        },
+        trip: { id: createdGroup.tripId, destination: { name: destination.name, lat: destination.lat, lng: destination.lng } },
         groupCode: createdGroup.code,
       },
     });
     onClose();
   };
 
-  // ── Join Group ────────────────────────────────────────────────────────────
   const handleJoin = async () => {
-    if (!joinCode.trim()) {
-      setJoinError("Please enter the group code.");
-      return;
-    }
-    if (pin.length !== 6) {
-      setJoinError("Please enter the full 6-digit PIN.");
-      return;
-    }
+    if (!joinCode.trim()) { setJoinError("Please enter the group code."); return; }
+    if (pin.length !== 6) { setJoinError("Please enter the full 6-digit PIN."); return; }
     setJoining(true);
     setJoinError(null);
     try {
       const res = await groupApi.join(token, joinCode.trim().toUpperCase(), pin, user?.name || "Member");
-
-      // Start a trip for this member too
       const trip = await api.startTrip(token, {
         destinationName: res.destination.name,
         destinationLat: res.destination.lat,
         destinationLng: res.destination.lng,
       });
-
       nav(`/tracking/${trip.id}`, {
-        state: {
-          trip: {
-            id: trip.id,
-            destination: res.destination,
-          },
-          groupCode: res.code,
-        },
+        state: { trip: { id: trip.id, destination: res.destination }, groupCode: res.code },
       });
       onClose();
     } catch (err) {
@@ -161,23 +166,28 @@ export default function GroupModal({ isOpen, onClose, destination }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      style={{ background: "rgba(5,8,17,0.85)", backdropFilter: "blur(8px)" }}
+      style={{ background: "rgba(5,8,17,0.88)", backdropFilter: "blur(10px)" }}
     >
       <div
-        className="relative w-full max-w-sm rounded-2xl border border-neon-cyan/30 shadow-[0_0_60px_rgba(0,240,255,0.15)]"
+        className="relative w-full max-w-sm rounded-2xl border border-neon-cyan/30 shadow-[0_0_60px_rgba(0,240,255,0.15)] overflow-hidden"
         style={{ background: "linear-gradient(135deg,#0a0f1f 60%,#0e1830 100%)" }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <div>
-            <h2 className="font-display text-lg font-extrabold text-white">👥 Group Travel</h2>
-            <p className="text-xs text-night-500 mt-0.5">Travel together, alarm together</p>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-neon-cyan/20 text-neon-cyan">
+              <IconUsers />
+            </div>
+            <div>
+              <h2 className="font-display text-base font-extrabold text-white leading-tight">Group Travel</h2>
+              <p className="text-[10px] text-night-500">Travel together, alarm together</p>
+            </div>
           </div>
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full border border-night-700 text-night-500 hover:text-white hover:border-neon-cyan/50 transition-all"
           >
-            ✕
+            <IconX />
           </button>
         </div>
 
@@ -185,35 +195,36 @@ export default function GroupModal({ isOpen, onClose, destination }) {
         <div className="mx-5 mb-4 flex rounded-xl border border-night-700 bg-night-900 p-1 gap-1">
           <button
             onClick={() => setTab("create")}
-            className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all ${
               tab === "create"
                 ? "bg-neon-cyan text-night-950 shadow-[0_0_15px_rgba(0,240,255,0.4)]"
                 : "text-night-400 hover:text-white"
             }`}
           >
-            ✨ Create Group
+            <IconSparkle />
+            Create Group
           </button>
           <button
             onClick={() => setTab("join")}
-            className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all ${
               tab === "join"
                 ? "bg-neon-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.4)]"
                 : "text-night-400 hover:text-white"
             }`}
           >
-            🔗 Join Group
+            <IconLink />
+            Join Group
           </button>
         </div>
 
-        {/* ── CREATE TAB ─────────────────────────────────────────────────── */}
+        {/* ── CREATE TAB ──────────────────────────────────────────────────── */}
         {tab === "create" && (
           <div className="px-5 pb-5 space-y-4">
             {!createdGroup ? (
               <>
-                {/* Destination preview */}
                 {destination ? (
                   <div className="rounded-xl border border-neon-cyan/30 bg-neon-cyan/10 px-4 py-3">
-                    <p className="text-xs text-neon-cyan font-semibold uppercase tracking-wider">Destination</p>
+                    <p className="text-[10px] text-neon-cyan font-semibold uppercase tracking-wider">Destination</p>
                     <p className="text-sm font-bold text-white mt-0.5 truncate">{destination.name}</p>
                   </div>
                 ) : (
@@ -222,20 +233,19 @@ export default function GroupModal({ isOpen, onClose, destination }) {
                   </div>
                 )}
 
-                {/* How it works */}
                 <div className="space-y-2 text-xs text-night-400">
-                  <div className="flex items-start gap-2">
-                    <span className="text-neon-cyan mt-0.5">①</span>
-                    <span>You get a <strong className="text-white">Group Code</strong> + <strong className="text-white">6-digit PIN</strong></span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-neon-cyan mt-0.5">②</span>
-                    <span>Share with friends via WhatsApp — they enter the PIN to join</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-neon-cyan mt-0.5">③</span>
-                    <span>All phones alarm <strong className="text-white">simultaneously</strong> as you approach the stop</span>
-                  </div>
+                  {[
+                    "You get a Group Code + 6-digit PIN",
+                    "Share with friends — they enter the PIN to join",
+                    "All phones alarm simultaneously as you approach the stop",
+                  ].map((text, i) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-neon-cyan/20 text-[9px] font-bold text-neon-cyan mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span>{text}</span>
+                    </div>
+                  ))}
                 </div>
 
                 {createError && (
@@ -247,26 +257,29 @@ export default function GroupModal({ isOpen, onClose, destination }) {
                 <button
                   onClick={handleCreate}
                   disabled={creating || !destination}
-                  className="w-full rounded-xl bg-neon-cyan py-3.5 text-sm font-extrabold text-night-950 shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-neon-cyan py-3.5 text-sm font-extrabold text-night-950 shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                 >
-                  {creating ? "Creating Group…" : "✨ Create Group & Get PIN"}
+                  <IconSparkle />
+                  {creating ? "Creating Group…" : "Create Group & Get PIN"}
                 </button>
               </>
             ) : (
-              /* ── Group Created — show code + pin + share ── */
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="rounded-2xl border border-neon-gold/40 bg-neon-gold/10 px-4 py-4 text-center">
-                  <p className="text-xs font-bold uppercase tracking-widest text-neon-gold mb-2">Group Code</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-neon-gold mb-2">Group Code</p>
                   <p className="font-mono text-3xl font-extrabold text-white tracking-widest">{createdGroup.code}</p>
                 </div>
 
                 <div className="rounded-2xl border border-neon-purple/40 bg-neon-purple/10 px-4 py-4 text-center">
-                  <p className="text-xs font-bold uppercase tracking-widest text-neon-purple mb-2">🔐 PIN (share only with group members)</p>
-                  <div className="flex justify-center gap-2 mt-1">
+                  <div className="flex items-center justify-center gap-1.5 mb-3">
+                    <span className="text-neon-purple"><IconLock /></span>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-neon-purple">PIN — share only with members</p>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1.5">
                     {createdGroup.pin.split("").map((d, i) => (
                       <div
                         key={i}
-                        className="flex h-10 w-9 items-center justify-center rounded-xl border border-neon-purple/60 bg-night-900 font-mono text-xl font-extrabold text-neon-purple"
+                        className="flex h-10 items-center justify-center rounded-xl border border-neon-purple/60 bg-night-900 font-mono text-xl font-extrabold text-neon-purple"
                       >
                         {d}
                       </div>
@@ -274,23 +287,25 @@ export default function GroupModal({ isOpen, onClose, destination }) {
                   </div>
                 </div>
 
-                <p className="text-center text-xs text-night-500">
-                  Group expires in 4 hours. Members join at:<br />
-                  <span className="text-neon-cyan font-mono text-[10px] break-all">{createdGroup.link}</span>
+                <p className="text-center text-[10px] text-night-500">
+                  Group expires in 4 hours.<br />
+                  <span className="text-neon-cyan font-mono break-all">{createdGroup.link}</span>
                 </p>
 
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleShare}
-                    className="rounded-xl border border-neon-cyan/40 bg-neon-cyan/10 py-3 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all"
+                    className="flex items-center justify-center gap-2 rounded-xl border border-neon-cyan/40 bg-neon-cyan/10 py-3 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all"
                   >
-                    📤 Share Link
+                    <IconShare />
+                    Share Link
                   </button>
                   <button
                     onClick={handleStartTrip}
-                    className="rounded-xl bg-neon-cyan py-3 text-xs font-extrabold text-night-950 shadow-[0_0_15px_rgba(0,240,255,0.4)] hover:shadow-[0_0_25px_rgba(0,240,255,0.6)] transition-all active:scale-95"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-neon-cyan py-3 text-xs font-extrabold text-night-950 shadow-[0_0_15px_rgba(0,240,255,0.4)] hover:shadow-[0_0_25px_rgba(0,240,255,0.6)] transition-all active:scale-95"
                   >
-                    🚀 Start Trip
+                    <IconPlay />
+                    Start Trip
                   </button>
                 </div>
               </div>
@@ -298,12 +313,11 @@ export default function GroupModal({ isOpen, onClose, destination }) {
           </div>
         )}
 
-        {/* ── JOIN TAB ───────────────────────────────────────────────────── */}
+        {/* ── JOIN TAB ─────────────────────────────────────────────────────── */}
         {tab === "join" && (
           <div className="px-5 pb-5 space-y-4">
-            {/* Group Code input */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-neon-cyan mb-1.5">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-neon-cyan mb-1.5">
                 Group Code
               </label>
               <input
@@ -316,12 +330,15 @@ export default function GroupModal({ isOpen, onClose, destination }) {
               />
             </div>
 
-            {/* PIN input — OTP-style boxes */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-neon-purple mb-1.5">
-                🔐 6-digit PIN
-              </label>
-              <div className="flex gap-2" onPaste={handlePinPaste}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-neon-purple"><IconLock /></span>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-neon-purple">
+                  6-digit PIN
+                </label>
+              </div>
+              {/* PIN grid — 6 equal boxes, no overflow */}
+              <div className="grid grid-cols-6 gap-1.5" onPaste={handlePinPaste}>
                 {pinDigits.map((digit, idx) => (
                   <input
                     key={idx}
@@ -332,7 +349,7 @@ export default function GroupModal({ isOpen, onClose, destination }) {
                     value={digit}
                     onChange={(e) => handlePinChange(idx, e.target.value)}
                     onKeyDown={(e) => handlePinKeyDown(idx, e)}
-                    className="flex-1 h-12 rounded-xl border border-night-700 bg-night-900 text-center font-mono text-xl font-extrabold text-neon-purple focus:border-neon-purple focus:outline-none focus:ring-1 focus:ring-neon-purple/40 transition-all caret-transparent"
+                    className="h-12 w-full rounded-xl border border-night-700 bg-night-900 text-center font-mono text-xl font-extrabold text-neon-purple focus:border-neon-purple focus:outline-none focus:ring-1 focus:ring-neon-purple/40 transition-all caret-transparent"
                   />
                 ))}
               </div>
@@ -347,12 +364,17 @@ export default function GroupModal({ isOpen, onClose, destination }) {
             <button
               onClick={handleJoin}
               disabled={joining || joinCode.length < 4 || pin.length !== 6}
-              className="w-full rounded-xl bg-neon-purple py-3.5 text-sm font-extrabold text-white shadow-[0_0_20px_rgba(176,38,255,0.4)] hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-neon-purple py-3.5 text-sm font-extrabold text-white shadow-[0_0_20px_rgba(176,38,255,0.4)] hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
             >
-              {joining ? "Joining…" : "🔗 Join Group & Start Tracking"}
+              {joining ? (
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <IconCheck />
+              )}
+              {joining ? "Joining…" : "Join Group & Start Tracking"}
             </button>
 
-            <p className="text-center text-xs text-night-600">
+            <p className="text-center text-[10px] text-night-600">
               Ask the trip host for the code and PIN
             </p>
           </div>

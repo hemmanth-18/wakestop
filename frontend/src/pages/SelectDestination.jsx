@@ -722,7 +722,13 @@ export default function SelectDestination() {
                 onClick={() => setIsGroupModalOpen(true)}
                 className="w-full flex items-center justify-center gap-2 rounded-2xl border border-neon-purple/50 bg-neon-purple/10 py-3.5 px-4 text-center font-display text-sm font-bold text-neon-purple shadow-[0_0_15px_rgba(176,38,255,0.15)] transition-all hover:bg-neon-purple/20 hover:shadow-[0_0_25px_rgba(176,38,255,0.3)] active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                👥 Start Group Trip
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                Start Group Trip
               </button>
             </div>
 
