@@ -480,8 +480,8 @@ export default function Tracking() {
                         </div>
 
                         {targetStop && (
-                          <span className="text-[11px] font-mono text-neon-cyan truncate max-w-[130px]">
-                            Stop: {targetStop.name}
+                          <span className="text-[11px] font-mono text-neon-cyan truncate max-w-[170px]">
+                            {targetStop.name}
                           </span>
                         )}
                       </div>
