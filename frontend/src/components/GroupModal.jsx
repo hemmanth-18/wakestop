@@ -60,9 +60,11 @@ const IconCheck = () => (
   </svg>
 );
 
-export default function GroupModal({ isOpen, onClose, destination }) {
+export default function GroupModal({ isOpen, onClose, destination, destinations = [] }) {
   const { token, user } = useAuth();
   const nav = useNavigate();
+
+  const destList = destinations.length > 0 ? destinations : (destination ? [destination] : []);
 
   const [tab, setTab] = useState(destination ? "create" : "join");
 
@@ -70,6 +72,7 @@ export default function GroupModal({ isOpen, onClose, destination }) {
   const [createError, setCreateError] = useState(null);
   const [createdGroup, setCreatedGroup] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [hostSelectedStopId, setHostSelectedStopId] = useState(null);
 
   const [joinCode, setJoinCode] = useState("");
   const [pinDigits, setPinDigits] = useState(["", "", "", "", "", ""]);
@@ -106,18 +109,21 @@ export default function GroupModal({ isOpen, onClose, destination }) {
   const pin = pinDigits.join("");
 
   const handleCreate = async () => {
-    if (!destination) { setCreateError("Please select a destination first."); return; }
+    if (destList.length === 0) { setCreateError("Please select a destination first."); return; }
     setCreating(true);
     setCreateError(null);
     try {
-      const res = await groupApi.create(token, destination.name, destination.lat, destination.lng, user?.name || "Host");
+      const res = await groupApi.create(token, destList, user?.name || "Host");
       const trip = await api.startTrip(token, {
-        destinationName: destination.name,
-        destinationLat: destination.lat,
-        destinationLng: destination.lng,
+        destinationName: res.destination.name,
+        destinationLat: res.destination.lat,
+        destinationLng: res.destination.lng,
       });
       const shareLink = `${window.location.origin}/join/${res.code}`;
-      setCreatedGroup({ code: res.code, pin: res.pin, link: shareLink, tripId: trip.id });
+      setCreatedGroup({ code: res.code, pin: res.pin, link: shareLink, tripId: trip.id, destinations: res.destinations });
+      if (Array.isArray(res.destinations) && res.destinations.length > 0) {
+        setHostSelectedStopId(res.destinations[0].id);
+      }
     } catch (err) {
       setCreateError(err.message || "Could not create group");
     } finally {
@@ -156,9 +162,12 @@ export default function GroupModal({ isOpen, onClose, destination }) {
 
   const handleStartTrip = () => {
     if (!createdGroup) return;
+    const groupDests = createdGroup.destinations || destList;
+    const targetDest = groupDests.find((d) => d.id === hostSelectedStopId) || groupDests[0] || destination;
+
     nav(`/tracking/${createdGroup.tripId}`, {
       state: {
-        trip: { id: createdGroup.tripId, destination: { name: destination.name, lat: destination.lat, lng: destination.lng } },
+        trip: { id: createdGroup.tripId, destination: targetDest },
         groupCode: createdGroup.code,
       },
     });
@@ -247,10 +256,19 @@ export default function GroupModal({ isOpen, onClose, destination }) {
           <div className="px-5 pb-5 space-y-4">
             {!createdGroup ? (
               <>
-                {destination ? (
-                  <div className="rounded-xl border border-neon-cyan/30 bg-neon-cyan/10 px-4 py-3">
-                    <p className="text-[10px] text-neon-cyan font-semibold uppercase tracking-wider">Destination</p>
-                    <p className="text-sm font-bold text-white mt-0.5 truncate">{destination.name}</p>
+                {destList.length > 0 ? (
+                  <div className="rounded-xl border border-neon-cyan/30 bg-neon-cyan/10 px-4 py-3 space-y-1.5">
+                    <p className="text-[10px] text-neon-cyan font-semibold uppercase tracking-wider">
+                      Group Drop-off Stops ({destList.length})
+                    </p>
+                    {destList.map((d, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs font-bold text-white truncate">
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-neon-cyan/30 text-[9px] text-neon-cyan">
+                          #{i + 1}
+                        </span>
+                        <span className="truncate">{d.name}</span>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="rounded-xl border border-alert-500/30 bg-alert-500/10 px-4 py-3 text-xs text-alert-500">
@@ -316,6 +334,37 @@ export default function GroupModal({ isOpen, onClose, destination }) {
                   Group expires in 4 hours.<br />
                   <span className="text-neon-cyan font-mono break-all">{createdGroup.link}</span>
                 </p>
+
+                {/* Host Stop Selector if multiple stops */}
+                {createdGroup.destinations && createdGroup.destinations.length > 1 && (
+                  <div className="space-y-1.5 rounded-xl border border-neon-cyan/30 bg-night-900/90 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-neon-cyan">
+                      Select YOUR drop-off stop (as Host):
+                    </p>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {createdGroup.destinations.map((d, i) => (
+                        <button
+                          key={d.id || i}
+                          type="button"
+                          onClick={() => setHostSelectedStopId(d.id)}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all border ${
+                            hostSelectedStopId === d.id
+                              ? "border-neon-cyan bg-neon-cyan/20 text-white"
+                              : "border-night-700 bg-night-950 text-night-400 hover:border-night-600"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2 truncate">
+                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-neon-cyan/20 text-[9px] text-neon-cyan font-extrabold">
+                              #{i + 1}
+                            </span>
+                            <span className="truncate">{d.name}</span>
+                          </span>
+                          {hostSelectedStopId === d.id && <span className="text-neon-cyan text-xs">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">

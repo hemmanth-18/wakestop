@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS groups (
   destination_name TEXT        NOT NULL,
   destination_lat  DOUBLE PRECISION NOT NULL,
   destination_lng  DOUBLE PRECISION NOT NULL,
+  destinations    JSONB        DEFAULT '[]'::jsonb, -- Array of up to 3 stops: [{ id, name, lat, lng }]
   alarm_stage     TEXT         DEFAULT NULL,       -- NULL | stage1_1km | stage2_500m | stage3_100m | arrived
   created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   expires_at      TIMESTAMPTZ  NOT NULL
@@ -17,13 +18,14 @@ CREATE TABLE IF NOT EXISTS groups (
 
 -- Group members table: one row per member per group
 CREATE TABLE IF NOT EXISTS group_members (
-  id              BIGSERIAL PRIMARY KEY,
-  group_code      VARCHAR(6)   NOT NULL REFERENCES groups(code) ON DELETE CASCADE,
-  user_id         TEXT         NOT NULL,
-  display_name    TEXT         NOT NULL DEFAULT 'Member',
-  lat             DOUBLE PRECISION DEFAULT NULL,
-  lng             DOUBLE PRECISION DEFAULT NULL,
-  last_updated    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  id                      BIGSERIAL PRIMARY KEY,
+  group_code              VARCHAR(6)   NOT NULL REFERENCES groups(code) ON DELETE CASCADE,
+  user_id                 TEXT         NOT NULL,
+  display_name            TEXT         NOT NULL DEFAULT 'Member',
+  selected_destination_id TEXT         DEFAULT NULL, -- Target stop id chosen by member
+  lat                     DOUBLE PRECISION DEFAULT NULL,
+  lng                     DOUBLE PRECISION DEFAULT NULL,
+  last_updated            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   UNIQUE (group_code, user_id)
 );
 

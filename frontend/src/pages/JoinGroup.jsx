@@ -34,6 +34,8 @@ export default function JoinGroup() {
   const [pinDigits, setPinDigits] = useState(["", "", "", "", "", ""]);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState(null);
+  const [groupDestinations, setGroupDestinations] = useState([]);
+  const [selectedStopId, setSelectedStopId] = useState(null);
 
   const pinRefs = useRef([]);
 
@@ -66,12 +68,20 @@ export default function JoinGroup() {
 
   const pin = pinDigits.join("");
 
-  const handleJoin = async () => {
+  const handleJoin = async (stopId = selectedStopId) => {
     if (pin.length !== 6) { setError("Please enter the full 6-digit PIN."); return; }
     setJoining(true);
     setError(null);
     try {
-      const res = await groupApi.join(token, code.toUpperCase(), pin, user?.name || "Member");
+      const res = await groupApi.join(token, code.toUpperCase(), pin, user?.name || "Member", stopId);
+      
+      if (Array.isArray(res.destinations) && res.destinations.length > 1 && !groupDestinations.length && !stopId) {
+        setGroupDestinations(res.destinations);
+        setSelectedStopId(res.destinations[0].id);
+        setJoining(false);
+        return;
+      }
+
       const trip = await api.startTrip(token, {
         destinationName: res.destination.name,
         destinationLat: res.destination.lat,
@@ -124,7 +134,6 @@ export default function JoinGroup() {
               Enter 6-digit PIN from host
             </label>
           </div>
-          {/* grid layout ensures all 6 boxes fit without overflow */}
           <div className="grid grid-cols-6 gap-2" onPaste={handlePaste}>
             {pinDigits.map((digit, idx) => (
               <input
@@ -145,6 +154,37 @@ export default function JoinGroup() {
             Ask the trip host for the PIN
           </p>
         </div>
+
+        {/* Stop Selector (If host set multiple stops) */}
+        {groupDestinations.length > 1 && (
+          <div className="px-6 mb-3 space-y-2">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-neon-cyan">
+              Select your drop-off stop ({groupDestinations.length} available)
+            </label>
+            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              {groupDestinations.map((d, i) => (
+                <button
+                  key={d.id || i}
+                  type="button"
+                  onClick={() => setSelectedStopId(d.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                    selectedStopId === d.id
+                      ? "border-neon-cyan bg-neon-cyan/20 text-white shadow-[0_0_10px_rgba(0,240,255,0.3)]"
+                      : "border-night-700 bg-night-900 text-night-300 hover:border-night-600"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 truncate">
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-neon-cyan/20 text-[9px] text-neon-cyan font-bold">
+                      #{i + 1}
+                    </span>
+                    <span className="truncate">{d.name}</span>
+                  </span>
+                  {selectedStopId === d.id && <span className="text-neon-cyan text-xs">✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mx-6 mt-3 rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-xs text-alert-500">

@@ -31,20 +31,34 @@ async function request(path, opts = {}) {
 }
 
 export const groupApi = {
-  /** Host creates a group. Returns { code, pin, destination, expiresAt } */
-  create: (token, destinationName, destinationLat, destinationLng, displayName) =>
-    request("/groups/create", {
+  /** Host creates a group. Returns { code, pin, destination, destinations, expiresAt } */
+  create: (token, destinations, displayName) => {
+    let destArray = [];
+    if (Array.isArray(destinations)) {
+      destArray = destinations;
+    } else if (destinations && typeof destinations === "object") {
+      destArray = [destinations];
+    }
+    const primary = destArray[0] || {};
+    return request("/groups/create", {
       method: "POST",
       token,
-      body: { destinationName, destinationLat, destinationLng, displayName },
-    }),
+      body: {
+        destinations: destArray,
+        destinationName: primary.name,
+        destinationLat: primary.lat,
+        destinationLng: primary.lng,
+        displayName,
+      },
+    });
+  },
 
-  /** Joiner enters code + PIN. Returns { code, destination, alarmStage } */
-  join: (token, code, pin, displayName) =>
+  /** Joiner enters code + PIN + optional selectedDestinationId. Returns { code, destination, destinations, alarmStage } */
+  join: (token, code, pin, displayName, selectedDestinationId = null) =>
     request("/groups/join", {
       method: "POST",
       token,
-      body: { code, pin, displayName },
+      body: { code, pin, displayName, selectedDestinationId },
     }),
 
   /** Member posts GPS position every 3s */

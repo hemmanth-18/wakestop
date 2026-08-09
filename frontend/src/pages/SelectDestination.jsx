@@ -72,6 +72,7 @@ export default function SelectDestination() {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState(null);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [extraDestinations, setExtraDestinations] = useState([]); // Up to 2 additional stops
 
   useEffect(() => {
     api.allStops().then(setAllStops).catch(() => {});
@@ -319,7 +320,36 @@ export default function SelectDestination() {
     }
   }
 
-  const isReadyToStart = (mode === "stops" && selected) || ((mode === "map" || mode === "coordinates") && mapPin);
+  const isReadyToStart = (mode === "stops" && Boolean(selected)) || ((mode === "map" || mode === "coordinates") && Boolean(mapPin));
+
+  const primaryDest = isReadyToStart
+    ? {
+        id: "dest-1",
+        name: mode === "stops" && selected
+          ? selected.name
+          : customName.trim() || `Map Location (${mapPin?.lat?.toFixed(4)}, ${mapPin?.lng?.toFixed(4)})`,
+        lat: mode === "stops" && selected ? Number(selected.latitude ?? selected.lat) : mapPin?.lat,
+        lng: mode === "stops" && selected ? Number(selected.longitude ?? selected.lng) : mapPin?.lng,
+      }
+    : null;
+
+  const allDestinations = primaryDest ? [primaryDest, ...extraDestinations] : [];
+
+  const handleAddStop = () => {
+    if (!primaryDest || allDestinations.length >= 3) return;
+    const newStop = {
+      id: `dest-${allDestinations.length + 1}`,
+      name: primaryDest.name,
+      lat: primaryDest.lat,
+      lng: primaryDest.lng,
+    };
+    setExtraDestinations((prev) => [...prev, newStop]);
+    setStatusMessage(`Added Stop #${allDestinations.length + 1}: ${newStop.name}`);
+  };
+
+  const handleRemoveExtraStop = (idx) => {
+    setExtraDestinations((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   return (
     <div className="relative min-h-[calc(100vh-64px)] px-4 py-8">
@@ -329,17 +359,8 @@ export default function SelectDestination() {
       <GroupModal
         isOpen={isGroupModalOpen}
         onClose={() => setIsGroupModalOpen(false)}
-        destination={
-          isReadyToStart
-            ? {
-                name: mode === "stops" && selected
-                  ? selected.name
-                  : customName.trim() || `Map Location (${mapPin?.lat?.toFixed(4)}, ${mapPin?.lng?.toFixed(4)})`,
-                lat: mode === "stops" && selected ? (selected.latitude ?? selected.lat) : mapPin?.lat,
-                lng: mode === "stops" && selected ? (selected.longitude ?? selected.lng) : mapPin?.lng,
-              }
-            : null
-        }
+        destination={primaryDest}
+        destinations={allDestinations}
       />
 
       <div className="relative z-10 mx-auto max-w-xl lg:max-w-6xl xl:max-w-7xl">
@@ -716,6 +737,47 @@ export default function SelectDestination() {
                 )}
               </button>
 
+              {/* Multi-destination Badges (Up to 3 Stops) */}
+              {allDestinations.length > 0 && (
+                <div className="rounded-2xl border border-neon-cyan/40 bg-night-900/90 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-neon-cyan uppercase tracking-wider">
+                      Group Drop-off Stops ({allDestinations.length}/3)
+                    </span>
+                    {allDestinations.length < 3 && isReadyToStart && (
+                      <button
+                        type="button"
+                        onClick={handleAddStop}
+                        className="text-[11px] font-semibold text-neon-cyan hover:underline"
+                      >
+                        + Add Current as Stop #{allDestinations.length + 1}
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    {allDestinations.map((d, i) => (
+                      <div key={d.id || i} className="flex items-center justify-between rounded-xl bg-night-950 px-3 py-2 text-xs border border-night-800">
+                        <span className="flex items-center gap-2 truncate">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neon-cyan/20 text-[10px] font-extrabold text-neon-cyan">
+                            #{i + 1}
+                          </span>
+                          <span className="text-white font-medium truncate">{d.name}</span>
+                        </span>
+                        {i > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExtraStop(i - 1)}
+                            className="text-night-500 hover:text-alert-500 text-xs px-1.5 py-0.5"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Group Trip Button */}
               <button
                 disabled={!isReadyToStart}
@@ -728,7 +790,7 @@ export default function SelectDestination() {
                   <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
                   <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
-                Start Group Trip
+                Start Group Trip ({allDestinations.length > 1 ? `${allDestinations.length} Stops` : "Group Mode"})
               </button>
             </div>
 

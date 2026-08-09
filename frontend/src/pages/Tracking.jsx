@@ -67,7 +67,7 @@ export default function Tracking() {
 
   useEffect(() => {
     if (token) {
-      api.tripHistory(token).then(setTripHistory).catch(() => {});
+      api.tripHistory(token).then(setTripHistory).catch(() => { });
     }
   }, [token]);
 
@@ -99,14 +99,14 @@ export default function Tracking() {
       api
         .tripHistory(token)
         .then((trips) => setTrip(trips.find((t) => t.id === id) || null))
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [trip, token, id]);
 
   useEffect(() => {
     if (stage === "arrived" && trip && token && !ended) {
       setEnded(true);
-      api.endTrip(token, trip.id, wakeResponseSec).catch(() => {});
+      api.endTrip(token, trip.id, wakeResponseSec).catch(() => { });
     }
   }, [stage, trip, token, ended, wakeResponseSec]);
 
@@ -142,15 +142,15 @@ export default function Tracking() {
   }
 
   const stageBadge = {
-    idle:        { label: "Tracking Live", classes: "border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.2)]" },
-    stage1_1km:  { label: "Stage 1 Alert (1 km)", classes: "border-neon-purple bg-neon-purple text-white font-bold shadow-[0_0_15px_rgba(176,38,255,0.5)]" },
+    idle: { label: "Tracking Live", classes: "border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.2)]" },
+    stage1_1km: { label: "Stage 1 Alert (1 km)", classes: "border-neon-purple bg-neon-purple text-white font-bold shadow-[0_0_15px_rgba(176,38,255,0.5)]" },
     stage2_500m: { label: "Stage 2 Wake Up! (500 m)", classes: "border-neon-gold bg-neon-gold text-night-950 font-bold shadow-[0_0_20px_rgba(255,184,0,0.5)]" },
     stage3_100m: { label: "Stage 3 Get Off! (100 m)", classes: "border-alert-500 bg-alert-500 text-white font-black alarm-shake shadow-[0_0_25px_rgba(255,46,85,0.6)]" },
-    notify:      { label: "Stage 1 Alert (1 km)", classes: "border-neon-purple bg-neon-purple text-white font-bold" },
-    alarm:       { label: "Stage 2 Wake Up! (500 m)", classes: "border-neon-gold bg-neon-gold text-night-950 font-bold" },
-    critical:    { label: "Stage 3 Get Off! (100 m)", classes: "border-alert-500 bg-alert-500 text-white font-black alarm-shake" },
-    arrived:     { label: "Arrived ✓", classes: "border-neon-emerald bg-neon-emerald text-night-950 font-bold" },
-    stopped:     { label: "Snoozed", classes: "border-night-700 bg-night-800 text-night-500" },
+    notify: { label: "Stage 1 Alert (1 km)", classes: "border-neon-purple bg-neon-purple text-white font-bold" },
+    alarm: { label: "Stage 2 Wake Up! (500 m)", classes: "border-neon-gold bg-neon-gold text-night-950 font-bold" },
+    critical: { label: "Stage 3 Get Off! (100 m)", classes: "border-alert-500 bg-alert-500 text-white font-black alarm-shake" },
+    arrived: { label: "Arrived ✓", classes: "border-neon-emerald bg-neon-emerald text-night-950 font-bold" },
+    stopped: { label: "Snoozed", classes: "border-night-700 bg-night-800 text-night-500" },
   };
   const badge = stageBadge[stage] || stageBadge.idle;
 
@@ -190,10 +190,10 @@ export default function Tracking() {
                 {groupCode && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-neon-purple/20 border border-neon-purple/40 px-2 py-0.5 text-[10px] text-neon-purple font-mono font-bold">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                      <circle cx="9" cy="7" r="4"/>
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
                     Group: {groupCode} · {memberCount} member{memberCount !== 1 ? "s" : ""}
                   </span>
@@ -236,27 +236,24 @@ export default function Tracking() {
             Multi-Stage Alarm Triggers:
           </p>
           <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
-            <div className={`p-2 rounded-xl border transition-all ${
-              distance !== null && distance <= (activeThresholds.stage1_1km || 1000) && distance > (activeThresholds.stage2_500m || 500)
+            <div className={`p-2 rounded-xl border transition-all ${distance !== null && distance <= (activeThresholds.stage1_1km || 1000) && distance > (activeThresholds.stage2_500m || 500)
                 ? "border-neon-purple bg-neon-purple/20 text-white font-extrabold shadow-[0_0_15px_rgba(176,38,255,0.4)]"
                 : "border-night-700 bg-night-900 text-night-400"
-            }`}>
+              }`}>
               <p className="font-bold text-neon-purple">Stage 1</p>
               <p className="text-[11px]">~{(activeThresholds.stage1_1km / 1000).toFixed(1)} km</p>
             </div>
-            <div className={`p-2 rounded-xl border transition-all ${
-              distance !== null && distance <= (activeThresholds.stage2_500m || 500) && distance > (activeThresholds.stage3_100m || 100)
+            <div className={`p-2 rounded-xl border transition-all ${distance !== null && distance <= (activeThresholds.stage2_500m || 500) && distance > (activeThresholds.stage3_100m || 100)
                 ? "border-neon-gold bg-neon-gold/20 text-white font-extrabold shadow-[0_0_15px_rgba(255,184,0,0.4)]"
                 : "border-night-700 bg-night-900 text-night-400"
-            }`}>
+              }`}>
               <p className="font-bold text-neon-gold">Stage 2</p>
               <p className="text-[11px]">~{activeThresholds.stage2_500m} m</p>
             </div>
-            <div className={`p-2 rounded-xl border transition-all ${
-              distance !== null && distance <= (activeThresholds.stage3_100m || 100)
+            <div className={`p-2 rounded-xl border transition-all ${distance !== null && distance <= (activeThresholds.stage3_100m || 100)
                 ? "border-alert-500 bg-alert-500/20 text-white font-extrabold shadow-[0_0_15px_rgba(255,46,85,0.4)]"
                 : "border-night-700 bg-night-900 text-night-400"
-            }`}>
+              }`}>
               <p className="font-bold text-alert-500">Stage 3</p>
               <p className="text-[11px]">~{activeThresholds.stage3_100m} m</p>
             </div>

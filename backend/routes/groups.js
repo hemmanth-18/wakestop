@@ -21,11 +21,18 @@ function generatePin() {
 // Host creates a group. Returns code + pin.
 router.post("/create", requireAuth, async (req, res) => {
   try {
-    const { destinationName, destinationLat, destinationLng } = req.body || {};
+    const { destinationName, destinationLat, destinationLng, destinations } = req.body || {};
 
-    if (!destinationName || destinationLat == null || destinationLng == null) {
-      return res.status(400).json({ error: "destinationName, destinationLat and destinationLng are required" });
+    let destList = Array.isArray(destinations) && destinations.length > 0 ? destinations.slice(0, 3) : [];
+
+    if (destList.length === 0) {
+      if (!destinationName || destinationLat == null || destinationLng == null) {
+        return res.status(400).json({ error: "At least one destination is required" });
+      }
+      destList = [{ id: "dest-1", name: destinationName, lat: destinationLat, lng: destinationLng }];
     }
+
+    const primaryDest = destList[0];
 
     // Generate unique code (retry if collision)
     let code;
@@ -44,9 +51,10 @@ router.post("/create", requireAuth, async (req, res) => {
         code,
         pin,
         host_user_id: req.userId,
-        destination_name: destinationName,
-        destination_lat: destinationLat,
-        destination_lng: destinationLng,
+        destination_name: primaryDest.name,
+        destination_lat: primaryDest.lat,
+        destination_lng: primaryDest.lng,
+        destinations: destList,
         alarm_stage: null,
         created_at: new Date().toISOString(),
         expires_at: expiresAt,
@@ -64,6 +72,7 @@ router.post("/create", requireAuth, async (req, res) => {
       group_code: code,
       user_id: req.userId,
       display_name: req.body.displayName || "Host",
+      selected_destination_id: primaryDest.id || "dest-1",
       lat: null,
       lng: null,
       last_updated: new Date().toISOString(),
@@ -72,11 +81,8 @@ router.post("/create", requireAuth, async (req, res) => {
     return res.status(201).json({
       code: group.code,
       pin: group.pin,
-      destination: {
-        name: group.destination_name,
-        lat: group.destination_lat,
-        lng: group.destination_lng,
-      },
+      destination: primaryDest,
+      destinations: destList,
       expiresAt: group.expires_at,
     });
   } catch (err) {
@@ -89,7 +95,7 @@ router.post("/create", requireAuth, async (req, res) => {
 // Member joins with code + PIN. Returns destination.
 router.post("/join", requireAuth, async (req, res) => {
   try {
-    const { code, pin, displayName } = req.body || {};
+    const { code, pin, displayName, selectedDestinationId } = req.body || {};
 
     if (!code || !pin) {
       return res.status(400).json({ error: "code and pin are required" });
@@ -114,6 +120,12 @@ router.post("/join", requireAuth, async (req, res) => {
       return res.status(410).json({ error: "This group has expired. Ask the host to create a new one." });
     }
 
+    const destList = Array.isArray(group.destinations) && group.destinations.length > 0
+      ? group.destinations
+      : [{ id: "dest-1", name: group.destination_name, lat: group.destination_lat, lng: group.destination_lng }];
+
+    const selectedDest = destList.find((d) => d.id === selectedDestinationId) || destList[0];
+
     // Upsert member (re-join is allowed)
     await supabase
       .from("group_members")
@@ -121,6 +133,7 @@ router.post("/join", requireAuth, async (req, res) => {
         group_code: code.toUpperCase().trim(),
         user_id: req.userId,
         display_name: displayName || "Member",
+        selected_destination_id: selectedDest.id,
         lat: null,
         lng: null,
         last_updated: new Date().toISOString(),
@@ -128,11 +141,8 @@ router.post("/join", requireAuth, async (req, res) => {
 
     return res.json({
       code: group.code,
-      destination: {
-        name: group.destination_name,
-        lat: group.destination_lat,
-        lng: group.destination_lng,
-      },
+      destination: selectedDest,
+      destinations: destList,
       alarmStage: group.alarm_stage,
     });
   } catch (err) {
@@ -194,25 +204,30 @@ router.post("/:code/alarm", requireAuth, async (req, res) => {
 });
 
 // ─── GET /api/groups/:code/state ─────────────────────────────────────────────
-// Poll: returns all member positions + current alarm_stage.
+// Poll: returns all member positions + current alarm_stage + destinations.
 router.get("/:code/state", requireAuth, async (req, res) => {
   try {
     const code = req.params.code.toUpperCase();
 
     const [groupRes, membersRes] = await Promise.all([
-      supabase.from("groups").select("alarm_stage, destination_name, destination_lat, destination_lng, expires_at").eq("code", code).maybeSingle(),
-      supabase.from("group_members").select("user_id, display_name, lat, lng, last_updated").eq("group_code", code),
+      supabase.from("groups").select("alarm_stage, destination_name, destination_lat, destination_lng, destinations, expires_at").eq("code", code).maybeSingle(),
+      supabase.from("group_members").select("user_id, display_name, selected_destination_id, lat, lng, last_updated").eq("group_code", code),
     ]);
 
     if (!groupRes.data) {
       return res.status(404).json({ error: "Group not found" });
     }
 
+    const destList = Array.isArray(groupRes.data.destinations) && groupRes.data.destinations.length > 0
+      ? groupRes.data.destinations
+      : [{ id: "dest-1", name: groupRes.data.destination_name, lat: groupRes.data.destination_lat, lng: groupRes.data.destination_lng }];
+
     // Filter out stale members (no update in >2 minutes = offline)
     const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
     const members = (membersRes.data || []).map((m) => ({
       userId: m.user_id,
       displayName: m.display_name,
+      selectedDestinationId: m.selected_destination_id || destList[0].id,
       lat: m.lat,
       lng: m.lng,
       isActive: m.last_updated && new Date(m.last_updated).getTime() > twoMinutesAgo,
@@ -221,11 +236,8 @@ router.get("/:code/state", requireAuth, async (req, res) => {
     return res.json({
       alarmStage: groupRes.data.alarm_stage,
       members,
-      destination: {
-        name: groupRes.data.destination_name,
-        lat: groupRes.data.destination_lat,
-        lng: groupRes.data.destination_lng,
-      },
+      destinations: destList,
+      destination: destList[0],
       expiresAt: groupRes.data.expires_at,
     });
   } catch (err) {

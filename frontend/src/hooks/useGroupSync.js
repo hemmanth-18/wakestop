@@ -18,6 +18,7 @@ import { groupApi } from "../services/groupApi";
  */
 export function useGroupSync(groupCode, token, localStage, position) {
   const [members, setMembers] = useState([]);
+  const [destinations, setDestinations] = useState([]);
   const [groupAlarmStage, setGroupAlarmStage] = useState(null);
   const [isGroupActive, setIsGroupActive] = useState(false);
 
@@ -30,6 +31,7 @@ export function useGroupSync(groupCode, token, localStage, position) {
     try {
       const state = await groupApi.getState(token, groupCode);
       setMembers(state.members || []);
+      setDestinations(state.destinations || []);
       setIsGroupActive(true);
 
       // If any group member triggered an alarm, update local state
@@ -80,6 +82,7 @@ export function useGroupSync(groupCode, token, localStage, position) {
 
   return {
     members,
+    destinations,
     groupAlarmStage,
     memberCount: members.length,
     isGroupActive,
