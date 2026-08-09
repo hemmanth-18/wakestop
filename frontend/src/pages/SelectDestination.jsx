@@ -75,6 +75,7 @@ export default function SelectDestination() {
   const [extraDestinations, setExtraDestinations] = useState([]); // Up to 2 additional stops
 
   useEffect(() => {
+    requestAllMobilePermissions().catch(() => {});
     api.allStops()
       .then((res) => setAllStops(Array.isArray(res) ? res : []))
       .catch(() => setAllStops([]));

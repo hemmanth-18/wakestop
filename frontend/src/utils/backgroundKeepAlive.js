@@ -68,6 +68,22 @@ let wakeLockInstance = null;
 export async function requestAllMobilePermissions() {
   if (typeof window === "undefined") return "denied";
 
+  // Native Capacitor Android permission dialog prompts
+  if (window.Capacitor?.isNativePlatform()) {
+    try {
+      const { Geolocation } = await import("@capacitor/geolocation");
+      await Geolocation.requestPermissions();
+    } catch (e) {
+      console.warn("Capacitor Geolocation permission error:", e?.message);
+    }
+    try {
+      const { LocalNotifications } = await import("@capacitor/local-notifications");
+      await LocalNotifications.requestPermissions();
+    } catch (e) {
+      console.warn("Capacitor Notifications permission error:", e?.message);
+    }
+  }
+
   let notifStatus = "granted";
   if ("Notification" in window && Notification.permission !== "granted") {
     try {
