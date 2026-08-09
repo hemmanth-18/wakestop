@@ -37,6 +37,12 @@ const IconShare = () => (
     <line x1="12" y1="2" x2="12" y2="15"/>
   </svg>
 );
+const IconCopy = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+  </svg>
+);
 const IconPlay = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="5 3 19 12 5 21 5 3"/>
@@ -63,6 +69,7 @@ export default function GroupModal({ isOpen, onClose, destination }) {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
   const [createdGroup, setCreatedGroup] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const [joinCode, setJoinCode] = useState("");
   const [pinDigits, setPinDigits] = useState(["", "", "", "", "", ""]);
@@ -124,9 +131,27 @@ export default function GroupModal({ isOpen, onClose, destination }) {
     if (navigator.share) {
       navigator.share({ title: "WakeStop Group Trip", text }).catch(() => {});
     } else {
-      navigator.clipboard?.writeText(text);
-      alert("Link copied to clipboard!");
+      handleCopyLink();
     }
+  };
+
+  const handleCopyLink = () => {
+    if (!createdGroup) return;
+    const text = `${createdGroup.link}\nCode: ${createdGroup.code} | PIN: ${createdGroup.pin}`;
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      // fallback
+      const el = document.createElement("textarea");
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   const handleStartTrip = () => {
@@ -292,17 +317,30 @@ export default function GroupModal({ isOpen, onClose, destination }) {
                   <span className="text-neon-cyan font-mono break-all">{createdGroup.link}</span>
                 </p>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={handleShare}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-neon-cyan/40 bg-neon-cyan/10 py-3 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all"
-                  >
-                    <IconShare />
-                    Share Link
-                  </button>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleCopyLink}
+                      className={`flex items-center justify-center gap-2 rounded-xl border py-3 text-xs font-bold transition-all ${
+                        copied
+                          ? "border-neon-cyan bg-neon-cyan/20 text-neon-cyan"
+                          : "border-neon-cyan/40 bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan/20"
+                      }`}
+                    >
+                      {copied ? <IconCheck /> : <IconCopy />}
+                      {copied ? "Copied!" : "Copy Link"}
+                    </button>
+                    <button
+                      onClick={handleShare}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-neon-cyan/40 bg-neon-cyan/10 py-3 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-all"
+                    >
+                      <IconShare />
+                      Share Link
+                    </button>
+                  </div>
                   <button
                     onClick={handleStartTrip}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-neon-cyan py-3 text-xs font-extrabold text-night-950 shadow-[0_0_15px_rgba(0,240,255,0.4)] hover:shadow-[0_0_25px_rgba(0,240,255,0.6)] transition-all active:scale-95"
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-neon-cyan py-3.5 text-sm font-extrabold text-night-950 shadow-[0_0_15px_rgba(0,240,255,0.4)] hover:shadow-[0_0_25px_rgba(0,240,255,0.6)] transition-all active:scale-95"
                   >
                     <IconPlay />
                     Start Trip
