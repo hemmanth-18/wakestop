@@ -263,7 +263,10 @@ export default function Tracking() {
                   <button
                     key={d.id || i}
                     onClick={() => {
-                      setTrip((prev) => prev ? { ...prev, destination: d } : prev);
+                      setTrip((prev) => (prev ? { ...prev, destination: d } : prev));
+                      if (groupCode && token && d.id) {
+                        groupApi.updateMemberStop(token, groupCode, d.id).catch(() => {});
+                      }
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border ${
                       isActiveStop

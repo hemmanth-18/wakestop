@@ -222,6 +222,32 @@ router.post("/:code/start", requireAuth, async (req, res) => {
   }
 });
 
+// ─── POST /api/groups/:code/stop ─────────────────────────────────────────────
+// Member or Host changes their target drop-off stop on live tracking without page reload.
+router.post("/:code/stop", requireAuth, async (req, res) => {
+  try {
+    const { selectedDestinationId } = req.body || {};
+    const code = req.params.code.toUpperCase();
+
+    if (!selectedDestinationId) {
+      return res.status(400).json({ error: "selectedDestinationId is required" });
+    }
+
+    await supabase
+      .from("group_members")
+      .update({
+        selected_destination_id: selectedDestinationId,
+        last_updated: new Date().toISOString(),
+      })
+      .eq("group_code", code)
+      .eq("user_id", req.userId);
+
+    return res.json({ ok: true, selectedDestinationId });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/groups/:code/state ─────────────────────────────────────────────
 // Poll: returns all member positions + current alarm_stage + destinations.
 router.get("/:code/state", requireAuth, async (req, res) => {

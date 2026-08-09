@@ -88,4 +88,12 @@ export const groupApi = {
   /** Host dissolves the group after trip ends */
   dissolve: (token, code) =>
     request(`/groups/${code}`, { method: "DELETE", token }),
+
+  /** Member or host updates their target drop-off stop on live tracking without page reload */
+  updateMemberStop: (token, code, selectedDestinationId) =>
+    request(`/groups/${code}/stop`, {
+      method: "POST",
+      token,
+      body: { selectedDestinationId },
+    }),
 };
