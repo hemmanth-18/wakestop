@@ -541,6 +541,8 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
                 </div>
               </div>
             )}
+          </div>
+        )}
       </div>
     </div>
   );
