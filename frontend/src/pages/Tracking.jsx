@@ -420,6 +420,58 @@ export default function Tracking() {
               </div>
             </div>
 
+            {/* ── Group Members Card ── */}
+            {groupCode && members.length > 0 && (
+              <div className="glass-panel rounded-2xl p-4 border-neon-purple/40 space-y-3 bg-night-900/90 shadow-[0_0_20px_rgba(176,38,255,0.15)]">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-neon-purple flex items-center gap-1.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Joined Group Members ({members.length})
+                  </p>
+                  <span className="flex items-center gap-1 font-mono text-[10px] text-neon-emerald">
+                    <span className="h-1.5 w-1.5 rounded-full bg-neon-emerald animate-ping" /> Live Sync
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {members.map((m) => {
+                    const targetStop = groupDestinations.find((d) => d.id === m.selectedDestinationId) || groupDestinations[0];
+                    const isHostMember = m.userId === hostUserId;
+                    const isMe = m.userId === user?.id;
+
+                    return (
+                      <div
+                        key={m.userId}
+                        className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs border transition-all ${
+                          isMe
+                            ? "border-neon-cyan bg-neon-cyan/10 text-white font-bold"
+                            : "border-night-700 bg-night-950 text-night-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${m.isActive ? "bg-neon-emerald shadow-[0_0_8px_#00FF66]" : "bg-night-600"}`} />
+                          <span className="truncate">
+                            {m.displayName} {isHostMember ? "👑 (Host)" : ""} {isMe ? "(You)" : ""}
+                          </span>
+                        </div>
+
+                        {targetStop && (
+                          <span className="text-[11px] font-mono text-neon-cyan truncate max-w-[130px]">
+                            Stop: {targetStop.name}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* ── Battery Risk Card ── */}
             <BatteryRiskCard
               etaMinutes={aiEta?.dynamicEtaMin || 60}

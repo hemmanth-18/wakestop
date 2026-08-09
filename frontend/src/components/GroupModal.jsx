@@ -73,6 +73,22 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
   const [createdGroup, setCreatedGroup] = useState(null);
   const [copied, setCopied] = useState(false);
   const [hostSelectedStopId, setHostSelectedStopId] = useState(null);
+  const [liveMembers, setLiveMembers] = useState([]);
+
+  useEffect(() => {
+    if (!createdGroup?.code || !token) return;
+    const fetchMembers = async () => {
+      try {
+        const state = await groupApi.getState(token, createdGroup.code);
+        setLiveMembers(state.members || []);
+      } catch (err) {
+        console.warn("Poll group members error:", err?.message);
+      }
+    };
+    fetchMembers();
+    const interval = setInterval(fetchMembers, 2000);
+    return () => clearInterval(interval);
+  }, [createdGroup?.code, token]);
 
   const [joinCode, setJoinCode] = useState("");
   const [pinDigits, setPinDigits] = useState(["", "", "", "", "", ""]);
@@ -365,6 +381,45 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
                   Group expires in 4 hours.<br />
                   <span className="text-neon-cyan font-mono break-all">{createdGroup.link}</span>
                 </p>
+
+                {/* Joined Members Panel */}
+                <div className="rounded-xl border border-neon-purple/40 bg-night-900/90 p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-neon-purple uppercase tracking-wider text-[10px]">
+                      👥 Joined Members ({liveMembers.length})
+                    </span>
+                    <span className="flex items-center gap-1 font-mono text-[10px] text-neon-emerald">
+                      <span className="h-1.5 w-1.5 rounded-full bg-neon-emerald animate-ping" /> Live Sync
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {liveMembers.length === 0 ? (
+                      <p className="text-[11px] text-night-500 italic text-center py-1">
+                        Waiting for friends to join using Code &amp; PIN…
+                      </p>
+                    ) : (
+                      liveMembers.map((m) => {
+                        const targetStop = (createdGroup.destinations || []).find((d) => d.id === m.selectedDestinationId);
+                        const isHostMember = m.userId === user?.id;
+                        return (
+                          <div key={m.userId} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-night-950/80 border border-night-800 text-xs">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`h-2 w-2 rounded-full ${m.isActive ? "bg-neon-emerald" : "bg-night-600"} shrink-0`} />
+                              <span className="font-bold text-white truncate">
+                                {m.displayName} {isHostMember ? "👑 (Host)" : ""}
+                              </span>
+                            </div>
+                            {targetStop && (
+                              <span className="text-[10px] text-neon-cyan font-mono truncate max-w-[130px]">
+                                {targetStop.name}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
 
                 {/* Host Stop Selector if multiple stops */}
                 {createdGroup.destinations && createdGroup.destinations.length > 1 && (
