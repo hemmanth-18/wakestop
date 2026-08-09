@@ -212,147 +212,178 @@ export function useGeoTracking(destination, customThresholds = null, tripHistory
   }, [positionHistory, distance, stage, triggerEarlyBatteryAlarm]);
 
   useEffect(() => {
-    if (!("geolocation" in navigator)) {
-      setError("Geolocation is not supported on this device/browser.");
-      return;
-    }
     if (!destination) return;
 
     unlockAudioContext();
     requestNotificationPermission();
 
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const point = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          speed: pos.coords.speed,
-          timestamp: pos.timestamp || Date.now(),
-        };
+    let capWatchCallbackId = null;
 
-        const speedKmh = pos.coords.speed != null && pos.coords.speed >= 0 ? pos.coords.speed * 3.6 : 0;
-        setCurrentSpeedKmh(speedKmh);
+    const processPosition = (coords, timestamp) => {
+      if (!coords) return;
+      const point = {
+        lat: coords.latitude,
+        lng: coords.longitude,
+        speed: coords.speed,
+        timestamp: timestamp || Date.now(),
+      };
 
-        setPosition(pos.coords);
-        setPositionHistory((prev) => [...prev.slice(-25), point]);
+      const speedKmh = coords.speed != null && coords.speed >= 0 ? coords.speed * 3.6 : 0;
+      setCurrentSpeedKmh(speedKmh);
 
-        const d = distanceMetres(pos.coords.latitude, pos.coords.longitude, destination.lat, destination.lng);
-        setDistance(d);
+      setPosition(coords);
+      setPositionHistory((prev) => [...prev.slice(-25), point]);
 
-        const t = thresholdsRef.current; // always read latest speed-adaptive thresholds
-        let nextStage = stage;
+      const d = distanceMetres(coords.latitude, coords.longitude, destination.lat, destination.lng);
+      setDistance(d);
 
-        if (manuallyStopped.current) {
-          nextStage = d <= t.arrivedM ? "arrived" : "stopped";
-        } else if (isBatteryCritical) {
-          nextStage = d <= t.arrivedM ? "arrived" : "stage3_100m";
-        } else if (d <= t.arrivedM) {
-          nextStage = "arrived";
-        } else if (d <= t.stage3_100m) {
-          // Stage 3 Alarm (100m target threshold)
-          nextStage = "stage3_100m";
-        } else if (d <= t.stage2_500m) {
-          // Stage 2 Alarm (500m target threshold)
-          nextStage = "stage2_500m";
-        } else if (d <= t.stage1_1km) {
-          // Stage 1 Alarm (1 km target threshold)
-          nextStage = "stage1_1km";
-        } else {
-          nextStage = "idle";
+      const t = thresholdsRef.current; // always read latest speed-adaptive thresholds
+      let nextStage = stage;
+
+      if (manuallyStopped.current) {
+        nextStage = d <= t.arrivedM ? "arrived" : "stopped";
+      } else if (isBatteryCritical) {
+        nextStage = d <= t.arrivedM ? "arrived" : "stage3_100m";
+      } else if (d <= t.arrivedM) {
+        nextStage = "arrived";
+      } else if (d <= t.stage3_100m) {
+        nextStage = "stage3_100m";
+      } else if (d <= t.stage2_500m) {
+        nextStage = "stage2_500m";
+      } else if (d <= t.stage1_1km) {
+        nextStage = "stage1_1km";
+      } else {
+        nextStage = "idle";
+      }
+
+      if (nextStage !== lastStage.current) {
+        lastStage.current = nextStage;
+        setStage(nextStage);
+
+        if ((nextStage.startsWith("stage") || nextStage === "critical") && !alarmStartTime.current) {
+          alarmStartTime.current = Date.now();
         }
 
-        if (nextStage !== lastStage.current) {
-          lastStage.current = nextStage;
-          setStage(nextStage);
-
-          if ((nextStage.startsWith("stage") || nextStage === "critical") && !alarmStartTime.current) {
-            alarmStartTime.current = Date.now();
-          }
-
-          if (nextStage === "stage1_1km") {
-            notify(
-              "🔔 Stage 1 Alert (1 km) — WakeStop",
-              `Approaching destination (~${(d / 1000).toFixed(1)} km). Start getting ready!`,
-              {
-                tag: "wakestop-stage1",
-                requireInteraction: true,
-                vibrate: [300, 150, 300],
-              }
-            );
-            triggerAudio("stage1_1km", {
-              title: "WakeStop — Stage 1 Alert (1 km)",
-              body: `Approaching destination (~${(d / 1000).toFixed(1)} km). Start getting ready!`,
-              stage: "stage1_1km",
-            });
-            startAlarmVibration("notify");
-          } else if (nextStage === "stage2_500m") {
-            notify(
-              "⏰ Stage 2 Wake Up! (500 m) — WakeStop",
-              "Destination under 500 m away! Gather your luggage now.",
-              {
-                tag: "wakestop-stage2",
-                requireInteraction: true,
-                vibrate: [500, 150, 500, 150, 500],
-              }
-            );
-            triggerAudio("stage2_500m", {
-              title: "WakeStop — Stage 2 Wake Up! (500 m)",
-              body: "Destination under 500 m away! Gather your belongings now.",
-              stage: "stage2_500m",
-            });
-            startAlarmVibration("alarm");
-          } else if (nextStage === "stage3_100m") {
-            notify(
-              "🚨 Stage 3 Urgent Arrival! (100 m) — WakeStop",
-              "Under 100 m to destination! Step off vehicle immediately!",
-              {
-                tag: "wakestop-stage3",
-                requireInteraction: true,
-                vibrate: [800, 100, 800, 100, 800, 100, 800],
-              }
-            );
+        if (nextStage === "stage1_1km") {
+          notify(
+            "🔔 Stage 1 Alert (1 km) — WakeStop",
+            `Approaching destination (~${(d / 1000).toFixed(1)} km). Start getting ready!`,
+            {
+              tag: "wakestop-stage1",
+              requireInteraction: true,
+              vibrate: [300, 150, 300],
+            }
+          );
+          triggerAudio("stage1_1km", {
+            title: "WakeStop — Stage 1 Alert (1 km)",
+            body: `Approaching destination (~${(d / 1000).toFixed(1)} km). Start getting ready!`,
+            stage: "stage1_1km",
+          });
+          startAlarmVibration("notify");
+        } else if (nextStage === "stage2_500m") {
+          notify(
+            "⏰ Stage 2 Wake Up! (500 m) — WakeStop",
+            "Destination under 500 m away! Gather your luggage now.",
+            {
+              tag: "wakestop-stage2",
+              requireInteraction: true,
+              vibrate: [500, 150, 500, 150, 500],
+            }
+          );
+          triggerAudio("stage2_500m", {
+            title: "WakeStop — Stage 2 Wake Up! (500 m)",
+            body: "Destination under 500 m away! Gather your belongings now.",
+            stage: "stage2_500m",
+          });
+          startAlarmVibration("alarm");
+        } else if (nextStage === "stage3_100m") {
+          notify(
+            "🚨 Stage 3 Urgent Arrival! (100 m) — WakeStop",
+            "Under 100 m to destination! Step off vehicle immediately!",
+            {
+              tag: "wakestop-stage3",
+              requireInteraction: true,
+              vibrate: [800, 100, 800, 100, 800, 100, 800],
+            }
+          );
+          triggerAudio("stage3_100m", {
+            title: "WakeStop — Get Off Now! (100 m)",
+            body: "Destination under 100 m away! Step off vehicle immediately!",
+            stage: "critical",
+          });
+          startAlarmVibration("critical");
+          manuallyStopped.current = false;
+          clearRepeatTimer();
+          repeatTimer.current = window.setInterval(() => {
             triggerAudio("stage3_100m", {
               title: "WakeStop — Get Off Now! (100 m)",
-              body: "Destination under 100 m away! Step off vehicle immediately!",
+              body: "Under 100 m! Step off vehicle immediately!",
               stage: "critical",
             });
             startAlarmVibration("critical");
-            manuallyStopped.current = false;
-            clearRepeatTimer();
-            repeatTimer.current = window.setInterval(() => {
-              triggerAudio("stage3_100m", {
-                title: "WakeStop — Get Off Now! (100 m)",
-                body: "Under 100 m! Step off vehicle immediately!",
-                stage: "critical",
-              });
-              startAlarmVibration("critical");
-            }, 12000);
-          } else if (nextStage === "arrived") {
-            notify(
-              "✅ You've Arrived — WakeStop",
-              "Journey completed safely. Welcome to your destination!",
-              {
-                tag: "wakestop-arrived",
-                requireInteraction: true,
-                vibrate: [400, 100, 400, 100, 400],
-              }
-            );
-            triggerAudio("arrived", {
-              title: "✅ WakeStop — You've Arrived!",
-              body: "Journey completed safely. Welcome to your destination!",
-              stage: "arrived",
-            });
-            startAlarmVibration("arrived");
-            clearRepeatTimer();
-          }
+          }, 12000);
+        } else if (nextStage === "arrived") {
+          notify(
+            "✅ You've Arrived — WakeStop",
+            "Journey completed safely. Welcome to your destination!",
+            {
+              tag: "wakestop-arrived",
+              requireInteraction: true,
+              vibrate: [400, 100, 400, 100, 400],
+            }
+          );
+          triggerAudio("arrived", {
+            title: "✅ WakeStop — You've Arrived!",
+            body: "Journey completed safely. Welcome to your destination!",
+            stage: "arrived",
+          });
+          startAlarmVibration("arrived");
+          clearRepeatTimer();
         }
-      },
-      (err) => setError(err.message),
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
-    );
+      }
+    };
+
+    async function startWatch() {
+      if (window.Capacitor?.isNativePlatform()) {
+        try {
+          const { Geolocation } = await import("@capacitor/geolocation");
+          await Geolocation.requestPermissions();
+          capWatchCallbackId = await Geolocation.watchPosition(
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+            (pos) => {
+              if (pos?.coords) {
+                processPosition(pos.coords, pos.timestamp);
+              }
+            }
+          );
+          return;
+        } catch (e) {
+          console.warn("Capacitor native Geolocation fallback to navigator:", e?.message);
+        }
+      }
+
+      if ("geolocation" in navigator) {
+        watchId.current = navigator.geolocation.watchPosition(
+          (pos) => processPosition(pos.coords, pos.timestamp),
+          (err) => setError(err.message),
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+        );
+      } else {
+        setError("Geolocation is not supported on this device/browser.");
+      }
+    }
+
+    startWatch();
 
     return () => {
-      if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+      if (capWatchCallbackId !== null) {
+        import("@capacitor/geolocation").then(({ Geolocation }) => {
+          Geolocation.clearWatch({ id: capWatchCallbackId }).catch(() => {});
+        }).catch(() => {});
+      }
+      if (watchId.current !== null && "geolocation" in navigator) {
+        navigator.geolocation.clearWatch(watchId.current);
+      }
       clearRepeatTimer();
     };
   }, [destination?.lat, destination?.lng, isBatteryCritical]);
