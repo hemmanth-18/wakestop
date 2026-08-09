@@ -75,7 +75,9 @@ export default function SelectDestination() {
   const [extraDestinations, setExtraDestinations] = useState([]); // Up to 2 additional stops
 
   useEffect(() => {
-    api.allStops().then(setAllStops).catch(() => {});
+    api.allStops()
+      .then((res) => setAllStops(Array.isArray(res) ? res : []))
+      .catch(() => setAllStops([]));
   }, []);
 
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function SelectDestination() {
       ? user.favoriteLocations
       : (user?.favoriteLocation ? [user.favoriteLocation] : []);
 
-    const favItems = rawFavs
+    const favItems = (Array.isArray(rawFavs) ? rawFavs : [])
       .filter((f) => f && f.name && f.lat != null && f.lng != null)
       .map((f, idx) => ({
         isFavorite: true,
@@ -100,9 +102,9 @@ export default function SelectDestination() {
     if (token) {
       api.tripHistory(token)
         .then((history) => {
-          const suggestions = analyzeTravelPatterns(history);
-          const favNames = new Set(favItems.map((fi) => fi.name.toLowerCase()));
-          const filtered = suggestions.filter((s) => !favNames.has(s.name.toLowerCase()));
+          const suggestions = analyzeTravelPatterns(Array.isArray(history) ? history : []);
+          const favNames = new Set(favItems.map((fi) => fi.name ? fi.name.toLowerCase() : ""));
+          const filtered = (Array.isArray(suggestions) ? suggestions : []).filter((s) => s && s.name && !favNames.has(s.name.toLowerCase()));
           setAiSuggestions(filtered);
         })
         .catch(() => {
