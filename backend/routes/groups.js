@@ -55,6 +55,7 @@ router.post("/create", requireAuth, async (req, res) => {
         destination_lat: primaryDest.lat,
         destination_lng: primaryDest.lng,
         destinations: destList,
+        status: "waiting",
         alarm_stage: null,
         created_at: new Date().toISOString(),
         expires_at: expiresAt,
@@ -143,6 +144,7 @@ router.post("/join", requireAuth, async (req, res) => {
       code: group.code,
       destination: selectedDest,
       destinations: destList,
+      status: group.status || "waiting",
       alarmStage: group.alarm_stage,
     });
   } catch (err) {
@@ -197,7 +199,18 @@ router.post("/:code/alarm", requireAuth, async (req, res) => {
       await supabase.from("groups").update({ alarm_stage: stage }).eq("code", code);
     }
 
-    return res.json({ ok: true });
+// ─── POST /api/groups/:code/start ────────────────────────────────────────────
+// Host starts the group trip (changes status from 'waiting' to 'active').
+router.post("/:code/start", requireAuth, async (req, res) => {
+  try {
+    const code = req.params.code.toUpperCase();
+    const { data: group } = await supabase.from("groups").select("host_user_id").eq("code", code).maybeSingle();
+
+    if (!group) return res.status(404).json({ error: "Group not found" });
+    if (group.host_user_id !== req.userId) return res.status(403).json({ error: "Only the host can start the trip" });
+
+    await supabase.from("groups").update({ status: "active" }).eq("code", code);
+    return res.json({ ok: true, status: "active" });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -210,7 +223,7 @@ router.get("/:code/state", requireAuth, async (req, res) => {
     const code = req.params.code.toUpperCase();
 
     const [groupRes, membersRes] = await Promise.all([
-      supabase.from("groups").select("alarm_stage, destination_name, destination_lat, destination_lng, destinations, host_user_id, expires_at").eq("code", code).maybeSingle(),
+      supabase.from("groups").select("alarm_stage, status, destination_name, destination_lat, destination_lng, destinations, host_user_id, expires_at").eq("code", code).maybeSingle(),
       supabase.from("group_members").select("user_id, display_name, selected_destination_id, lat, lng, last_updated").eq("group_code", code),
     ]);
 
@@ -234,6 +247,7 @@ router.get("/:code/state", requireAuth, async (req, res) => {
     }));
 
     return res.json({
+      status: groupRes.data.status || "waiting",
       alarmStage: groupRes.data.alarm_stage,
       hostUserId: groupRes.data.host_user_id,
       members,

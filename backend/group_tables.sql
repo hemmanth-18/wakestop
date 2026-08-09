@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS groups (
   destination_lat  DOUBLE PRECISION NOT NULL,
   destination_lng  DOUBLE PRECISION NOT NULL,
   destinations    JSONB        DEFAULT '[]'::jsonb, -- Array of up to 3 stops: [{ id, name, lat, lng }]
+  status          VARCHAR(20)  NOT NULL DEFAULT 'waiting', -- 'waiting' | 'active' | 'ended'
   alarm_stage     TEXT         DEFAULT NULL,       -- NULL | stage1_1km | stage2_500m | stage3_100m | arrived
   created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   expires_at      TIMESTAMPTZ  NOT NULL

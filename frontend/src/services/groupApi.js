@@ -81,6 +81,10 @@ export const groupApi = {
   getState: (token, code) =>
     request(`/groups/${code}/state`, { token }),
 
+  /** Host starts the trip (activates status for all members) */
+  startGroupTrip: (token, code) =>
+    request(`/groups/${code}/start`, { method: "POST", token }),
+
   /** Host dissolves the group after trip ends */
   dissolve: (token, code) =>
     request(`/groups/${code}`, { method: "DELETE", token }),

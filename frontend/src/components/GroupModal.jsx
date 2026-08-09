@@ -160,10 +160,16 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
     });
   };
 
-  const handleStartTrip = () => {
+  const handleStartTrip = async () => {
     if (!createdGroup) return;
     const groupDests = createdGroup.destinations || destList;
     const targetDest = groupDests.find((d) => d.id === hostSelectedStopId) || groupDests[0] || destination;
+
+    try {
+      await groupApi.startGroupTrip(token, createdGroup.code);
+    } catch {
+      // proceed even if offline
+    }
 
     nav(`/tracking/${createdGroup.tripId}`, {
       state: {
