@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import SelectDestination from "./pages/SelectDestination";
 import Tracking from "./pages/Tracking";
 import History from "./pages/History";
+import JoinGroup from "./pages/JoinGroup";
 
 export default function App() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/join/:code" element={<JoinGroup />} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>

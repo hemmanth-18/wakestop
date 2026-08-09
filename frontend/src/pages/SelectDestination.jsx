@@ -9,6 +9,7 @@ import { SearchIcon, MapPinIcon, BusIcon, NavigationIcon, CheckIcon, SlidersIcon
 import { analyzeTravelPatterns } from "../utils/aiEngine";
 import { unlockAudioContext } from "../utils/audio";
 import { startBackgroundAudioKeepAlive, requestAllMobilePermissions } from "../utils/backgroundKeepAlive";
+import GroupModal from "../components/GroupModal";
 
 // Custom Leaflet SVG marker for map picker
 const customPickerIcon = new L.DivIcon({
@@ -70,6 +71,7 @@ export default function SelectDestination() {
 
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState(null);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
 
   useEffect(() => {
     api.allStops().then(setAllStops).catch(() => {});
@@ -322,6 +324,23 @@ export default function SelectDestination() {
   return (
     <div className="relative min-h-[calc(100vh-64px)] px-4 py-8">
       <ThunderNeonCanvas />
+
+      {/* Group Modal */}
+      <GroupModal
+        isOpen={isGroupModalOpen}
+        onClose={() => setIsGroupModalOpen(false)}
+        destination={
+          isReadyToStart
+            ? {
+                name: mode === "stops" && selected
+                  ? selected.name
+                  : customName.trim() || `Map Location (${mapPin?.lat?.toFixed(4)}, ${mapPin?.lng?.toFixed(4)})`,
+                lat: mode === "stops" && selected ? (selected.latitude ?? selected.lat) : mapPin?.lat,
+                lng: mode === "stops" && selected ? (selected.longitude ?? selected.lng) : mapPin?.lng,
+              }
+            : null
+        }
+      />
 
       <div className="relative z-10 mx-auto max-w-xl lg:max-w-6xl xl:max-w-7xl">
         <div className="glass-panel-gold rounded-3xl p-5 sm:p-8">
@@ -695,6 +714,15 @@ export default function SelectDestination() {
                 ) : (
                   "Select or search a location to continue"
                 )}
+              </button>
+
+              {/* Group Trip Button */}
+              <button
+                disabled={!isReadyToStart}
+                onClick={() => setIsGroupModalOpen(true)}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl border border-neon-purple/50 bg-neon-purple/10 py-3.5 px-4 text-center font-display text-sm font-bold text-neon-purple shadow-[0_0_15px_rgba(176,38,255,0.15)] transition-all hover:bg-neon-purple/20 hover:shadow-[0_0_25px_rgba(176,38,255,0.3)] active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                👥 Start Group Trip
               </button>
             </div>
 

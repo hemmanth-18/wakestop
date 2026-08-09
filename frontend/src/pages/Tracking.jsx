@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import { useGeoTracking } from "../hooks/useGeoTracking";
+import { useGroupSync } from "../hooks/useGroupSync";
 import AlarmOverlay from "../components/AlarmOverlay";
 import AlarmSettingsModal from "../components/AlarmSettingsModal";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
@@ -29,6 +30,14 @@ const stopSvgIcon = new L.DivIcon({
   iconAnchor: [17, 34],
 });
 
+// Group member marker (purple dot)
+const memberSvgIcon = new L.DivIcon({
+  html: `<div style="background:#B026FF;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px #B026FF;border:2px solid #050811;font-size:14px">👤</div>`,
+  className: "",
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
 function Recenter({ lat, lng }) {
   const map = useMap();
   useEffect(() => {
@@ -41,12 +50,15 @@ export default function Tracking() {
   const { id } = useParams();
   const location = useLocation();
   const nav = useNavigate();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [trip, setTrip] = useState(location.state?.trip ?? null);
   const [ended, setEnded] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [tripHistory, setTripHistory] = useState([]);
   const [roadPolyline, setRoadPolyline] = useState([]);
+
+  // Group Travel Mode — groupCode from navigation state
+  const groupCode = location.state?.groupCode ?? null;
 
   const destination = useMemo(
     () => (trip ? { lat: trip.destination.lat, lng: trip.destination.lng } : null),
@@ -73,6 +85,14 @@ export default function Tracking() {
     isBatteryCritical,
     triggerEarlyBatteryAlarm,
   } = useGeoTracking(destination, null, tripHistory);
+
+  // Group sync — polls every 3s when in group mode
+  const { members, groupAlarmStage, memberCount, isGroupActive } = useGroupSync(
+    groupCode,
+    token,
+    stage,
+    position ? { lat: position.latitude, lng: position.longitude } : null
+  );
 
   useEffect(() => {
     if (!trip && token && id) {
@@ -159,13 +179,19 @@ export default function Tracking() {
           <div className="flex items-start justify-between gap-3">
             {/* Destination name */}
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-xs font-semibold uppercase tracking-wider text-neon-cyan">
                   Live Destination
                 </p>
                 <span className="rounded-full bg-neon-cyan/20 border border-neon-cyan/40 px-2 py-0.5 text-[10px] text-neon-cyan font-mono font-bold">
                   📱 Screen-Off Audio Keep-Alive Active
                 </span>
+                {/* Group mode badge */}
+                {groupCode && (
+                  <span className="rounded-full bg-neon-purple/20 border border-neon-purple/40 px-2 py-0.5 text-[10px] text-neon-purple font-mono font-bold">
+                    👥 Group: {groupCode} · {memberCount} member{memberCount !== 1 ? "s" : ""}
+                  </span>
+                )}
               </div>
               <h1 className="mt-0.5 font-display text-xl sm:text-3xl font-extrabold text-white truncate">
                 {trip.destination.name}
@@ -274,6 +300,22 @@ export default function Tracking() {
                         }}
                       />
                     )}
+
+                    {/* Group member positions */}
+                    {members
+                      .filter((m) => m.lat != null && m.lng != null)
+                      .map((m) => (
+                        <Marker
+                          key={m.userId}
+                          position={[m.lat, m.lng]}
+                          icon={memberSvgIcon}
+                        >
+                          <Popup>
+                            <span className="font-semibold">{m.displayName}</span>
+                            {!m.isActive && <span className="text-xs text-gray-400"> (offline)</span>}
+                          </Popup>
+                        </Marker>
+                      ))}
 
                     <Recenter lat={position.latitude} lng={position.longitude} />
                   </>
