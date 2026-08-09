@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import ThunderNeonCanvas from "../components/ThunderNeonCanvas";
@@ -9,6 +9,9 @@ export default function Login() {
   const { login } = useAuth();
   const { showToast } = useToast();
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTarget = searchParams.get("redirect") || "/";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +35,7 @@ export default function Login() {
     try {
       const userObj = await login(cleanEmail, cleanPassword);
       showToast(`Welcome back, ${userObj?.name || "Commuter"}! 👋`, "success");
-      nav("/");
+      nav(redirectTarget);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -145,7 +148,10 @@ export default function Login() {
 
               <p className="mt-6 text-center lg:text-left text-xs text-night-500">
                 Don't have an account?{" "}
-                <Link to="/register" className="font-bold text-neon-gold hover:underline">
+                <Link
+                  to={`/register${redirectTarget !== "/" ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""}`}
+                  className="font-bold text-neon-gold hover:underline"
+                >
                   Create account
                 </Link>
               </p>
