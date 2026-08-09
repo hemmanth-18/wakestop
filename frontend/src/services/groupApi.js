@@ -5,11 +5,23 @@
 
 const getBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.startsWith("https://")) return envUrl;
+
+  // Check if running inside Capacitor Android native webview
+  const isNativeCapacitor =
+    typeof window !== "undefined" &&
+    (window.Capacitor?.isNativePlatform() ||
+      window.location.protocol === "capacitor:" ||
+      (import.meta.env.PROD && window.location.hostname === "localhost"));
+
+  if (isNativeCapacitor) {
+    return "https://wakestop.vercel.app/api";
+  }
+
   if (import.meta.env.PROD) {
-    if (envUrl && envUrl.startsWith("https://")) return envUrl;
     return "/api";
   }
-  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) return envUrl;
+
   const host = typeof window !== "undefined" && window.location.hostname ? window.location.hostname : "localhost";
   return `http://${host}:4000/api`;
 };
