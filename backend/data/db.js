@@ -236,32 +236,39 @@ export const db = {
     },
 
     insert: async (trip) => {
-      const { data, error } = await supabase
-        .from("trips")
-        .insert({
-          id: trip.id,
-          user_id: trip.userId,
-          start_name: trip.start?.name,
-          start_lat: trip.start?.lat,
-          start_lng: trip.start?.lng,
-          destination_name: trip.destination.name,
-          destination_lat: trip.destination.lat,
-          destination_lng: trip.destination.lng,
-          group_code: trip.groupCode || null,
-          destinations: trip.destinations || [],
-          start_time: trip.startTime,
-          end_time: trip.endTime,
-          status: trip.status,
-        })
-        .select()
-        .single();
+      const payload = {
+        id: trip.id,
+        user_id: trip.userId,
+        start_name: trip.start?.name,
+        start_lat: trip.start?.lat,
+        start_lng: trip.start?.lng,
+        destination_name: trip.destination.name,
+        destination_lat: trip.destination.lat,
+        destination_lng: trip.destination.lng,
+        group_code: trip.groupCode || null,
+        destinations: trip.destinations || [],
+        start_time: trip.startTime,
+        end_time: trip.endTime,
+        status: trip.status,
+      };
+
+      let { data, error } = await supabase.from("trips").insert(payload).select().single();
+
+      // Fallback if 'destinations' or 'group_code' column doesn't exist in Supabase schema yet
+      if (error && (error.message.includes("schema cache") || error.message.includes("column"))) {
+        delete payload.group_code;
+        delete payload.destinations;
+        const fallbackRes = await supabase.from("trips").insert(payload).select().single();
+        data = fallbackRes.data;
+        error = fallbackRes.error;
+      }
 
       if (error) {
         console.error("Supabase insert trip error:", error.message);
         throw new Error(error.message);
       }
 
-      return mapTripRow(data);
+      return mapTripRow({ ...data, group_code: trip.groupCode, destinations: trip.destinations });
     },
 
     update: async (id, patch) => {
