@@ -1,32 +1,16 @@
 # WakeStop 🚌
 
-> Never miss your bus stop again. Smart GPS wake alarms for long-distance commuters & group travelers.
+> Never miss your bus stop again.
 
-🌐 **Live Web App**: [https://wakestop.vercel.app](https://wakestop.vercel.app)  
-📱 **Android APK Download**: [Download Latest Android APK](https://github.com/hemmanth-18/wakestop/actions)
+🌐 **Live Web App**: [https://wakestop.vercel.app](https://wakestop.vercel.app)
+
+WakeStop tracks your live GPS position on long-distance bus journeys and wakes you with an escalating alarm as your stop approaches — designed for the TNSTC/SETC "I fell asleep on the overnight bus" problem.
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=flat-square)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&style=flat-square)
-![Capacitor](https://img.shields.io/badge/Capacitor-Android-119EFF?logo=capacitor&logoColor=white&style=flat-square)
 ![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white&style=flat-square)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white&style=flat-square)
 ![Vercel](https://img.shields.io/badge/Deployed-Vercel-000000?logo=vercel&logoColor=white&style=flat-square)
-
-## 📲 How to Install `app-debug.apk` on Android Mobile
-
-1. **Download the APK File**:
-   - Download **`app-debug.apk`** from [GitHub Actions Builds](https://github.com/hemmanth-18/wakestop/actions) or transfer `app-debug.apk` to your phone via WhatsApp / Google Drive / USB.
-2. **Open the File on Your Phone**:
-   - Open your phone's **Downloads** or **Files** app and tap **`app-debug.apk`**.
-3. **Allow Installation**:
-   - If Android prompts *"For your security, your phone is not allowed to install unknown apps from this source"*:
-     - Tap **Settings**.
-     - Toggle **Allow from this source** to **ON**.
-4. **Complete Setup**:
-   - Tap **Install** and open **WakeStop**!
-   - Tap **Allow** when prompted for Location & Notification permissions.
-
-> 🚨 **Emergency Alarm Channel**: The native `.apk` includes `STREAM_ALARM` + `USAGE_ALARM` hardware override — alarms ring at 100% max volume out of the built-in speaker even if your phone's media volume is muted!
 
 ## Project Structure
 
