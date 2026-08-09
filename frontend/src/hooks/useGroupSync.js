@@ -21,6 +21,7 @@ export function useGroupSync(groupCode, token, localStage, position) {
   const [destinations, setDestinations] = useState([]);
   const [groupAlarmStage, setGroupAlarmStage] = useState(null);
   const [hostUserId, setHostUserId] = useState(null);
+  const [hostName, setHostName] = useState("Host");
   const [isGroupActive, setIsGroupActive] = useState(false);
 
   const lastBroadcastStage = useRef(null);
@@ -34,6 +35,7 @@ export function useGroupSync(groupCode, token, localStage, position) {
       setMembers(state.members || []);
       setDestinations(state.destinations || []);
       setHostUserId(state.hostUserId || null);
+      setHostName(state.hostName || "Host");
       setIsGroupActive(true);
 
       // If any group member triggered an alarm, update local state
@@ -87,6 +89,7 @@ export function useGroupSync(groupCode, token, localStage, position) {
     destinations,
     groupAlarmStage,
     hostUserId,
+    hostName,
     memberCount: members.length,
     isGroupActive,
   };

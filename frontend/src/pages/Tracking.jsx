@@ -88,7 +88,7 @@ export default function Tracking() {
   } = useGeoTracking(destination, null, tripHistory);
 
   // Group sync — polls every 3s when in group mode
-  const { members, destinations: groupDestinations, groupAlarmStage, hostUserId, memberCount, isGroupActive } = useGroupSync(
+  const { members, destinations: groupDestinations, groupAlarmStage, hostUserId, hostName, memberCount, isGroupActive } = useGroupSync(
     groupCode,
     token,
     stage,
@@ -211,7 +211,7 @@ export default function Tracking() {
                       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
-                    Group: {groupCode} · {memberCount} member{memberCount !== 1 ? "s" : ""}
+                    Group: {groupCode} · Host: {hostName} ({memberCount} member{memberCount !== 1 ? "s" : ""})
                   </span>
                 )}
               </div>

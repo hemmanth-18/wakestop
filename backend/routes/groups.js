@@ -72,7 +72,7 @@ router.post("/create", requireAuth, async (req, res) => {
     await supabase.from("group_members").insert({
       group_code: code,
       user_id: req.userId,
-      display_name: req.body.displayName || "Host",
+      display_name: req.body.displayName || req.body.hostName || "Host",
       selected_destination_id: primaryDest.id || "dest-1",
       lat: null,
       lng: null,
@@ -252,10 +252,14 @@ router.get("/:code/state", requireAuth, async (req, res) => {
       isActive: m.last_updated && new Date(m.last_updated).getTime() > twoMinutesAgo,
     }));
 
+    const hostMember = (membersRes.data || []).find((m) => m.user_id === groupRes.data.host_user_id);
+    const hostName = hostMember?.display_name || "Host";
+
     return res.json({
       status: groupRes.data.status || "waiting",
       alarmStage: groupRes.data.alarm_stage,
       hostUserId: groupRes.data.host_user_id,
+      hostName,
       members,
       destinations: destList,
       destination: destList[0],

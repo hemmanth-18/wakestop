@@ -337,7 +337,10 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
             ) : (
               <div className="space-y-3">
                 <div className="rounded-2xl border border-neon-gold/40 bg-neon-gold/10 px-4 py-4 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-neon-gold mb-2">Group Code</p>
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-neon-gold mb-1">
+                    <span>Group Code</span>
+                    <span className="text-white font-mono">👑 Host: {user?.name || "Host"}</span>
+                  </div>
                   <p className="font-mono text-3xl font-extrabold text-white tracking-widest">{createdGroup.code}</p>
                 </div>
 
