@@ -16,6 +16,21 @@ import { useAuth } from "../context/AuthContext";
 import { SlidersIcon, NavigationIcon, ZapIcon, ClockIcon, BellIcon } from "../components/Icons";
 import { getSavedSoundPreset, getVibrationEnabled, getAllSoundOptions } from "../utils/audio";
 
+const IconCrown = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline text-neon-gold">
+    <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
+    <circle cx="12" cy="18" r="1"/>
+  </svg>
+);
+
+const IconOctagonStop = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="inline text-alert-500">
+    <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+);
+
 // Neon Leaflet SVG Marker Icons
 const busSvgIcon = new L.DivIcon({
   html: `<div style="background:#00F0FF;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px #00F0FF;border:3px solid #050811"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#050811" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v6"/><path d="M16 6v6"/><path d="M4 12h16"/><rect width="18" height="13" x="3" y="5" rx="3"/><circle cx="6.5" cy="15.5" r="1.5"/><circle cx="17.5" cy="15.5" r="1.5"/></svg></div>`,
@@ -276,9 +291,10 @@ export default function Tracking() {
             {groupCode && isHost && (
               <button
                 onClick={handleDissolveGroup}
-                className="flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl border border-alert-500/50 bg-alert-500/10 px-4 py-2.5 text-xs font-bold text-alert-500 hover:bg-alert-500/20 transition-all"
+                className="flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl border border-alert-500/50 bg-alert-500/10 px-4 py-2.5 text-xs font-bold text-alert-500 hover:bg-alert-500/20 transition-all cursor-pointer"
               >
-                🛑 Stop Trip for Everyone (Dissolve Group)
+                <IconOctagonStop />
+                Stop Trip for Everyone (Dissolve Group)
               </button>
             )}
           </div>
@@ -455,8 +471,8 @@ export default function Tracking() {
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${m.isActive ? "bg-neon-emerald shadow-[0_0_8px_#00FF66]" : "bg-night-600"}`} />
-                          <span className="truncate">
-                            {m.displayName} {isHostMember ? "👑 (Host)" : ""} {isMe ? "(You)" : ""}
+                          <span className="truncate flex items-center gap-1">
+                            {m.displayName} {isHostMember ? <span className="flex items-center gap-0.5 text-neon-gold font-bold text-[10px]"><IconCrown /> (Host)</span> : ""} {isMe ? "(You)" : ""}
                           </span>
                         </div>
 

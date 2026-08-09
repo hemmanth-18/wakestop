@@ -13,6 +13,12 @@ const IconUsers = () => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
   </svg>
 );
+const IconCrown = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline text-neon-gold">
+    <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
+    <circle cx="12" cy="18" r="1"/>
+  </svg>
+);
 const IconLink = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -359,7 +365,7 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
                 <div className="rounded-2xl border border-neon-gold/40 bg-neon-gold/10 px-4 py-4 text-center">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-neon-gold mb-1">
                     <span>Group Code</span>
-                    <span className="text-white font-mono">👑 Host: {user?.name || "Host"}</span>
+                    <span className="text-white font-mono flex items-center gap-1"><IconCrown /> Host: {user?.name || "Host"}</span>
                   </div>
                   <p className="font-mono text-3xl font-extrabold text-white tracking-widest">{createdGroup.code}</p>
                 </div>
@@ -409,8 +415,8 @@ export default function GroupModal({ isOpen, onClose, destination, destinations 
                           <div key={m.userId} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-night-950/80 border border-night-800 text-xs">
                             <div className="flex items-center gap-2 min-w-0">
                               <span className={`h-2 w-2 rounded-full ${m.isActive ? "bg-neon-emerald" : "bg-night-600"} shrink-0`} />
-                              <span className="font-bold text-white truncate">
-                                {m.displayName} {isHostMember ? "👑 (Host)" : ""}
+                              <span className="font-bold text-white truncate flex items-center gap-1">
+                                {m.displayName} {isHostMember ? <span className="flex items-center gap-0.5 text-neon-gold text-[10px]"><IconCrown /> (Host)</span> : ""}
                               </span>
                             </div>
                             {targetStop && (
