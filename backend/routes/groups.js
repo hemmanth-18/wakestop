@@ -199,6 +199,12 @@ router.post("/:code/alarm", requireAuth, async (req, res) => {
       await supabase.from("groups").update({ alarm_stage: stage }).eq("code", code);
     }
 
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── POST /api/groups/:code/start ────────────────────────────────────────────
 // Host starts the group trip (changes status from 'waiting' to 'active').
 router.post("/:code/start", requireAuth, async (req, res) => {
