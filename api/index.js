@@ -7,6 +7,7 @@ dotenv.config();
 import authRoutes from "../backend/routes/auth.js";
 import tripRoutes from "../backend/routes/trips.js";
 import stopRoutes from "../backend/routes/stops.js";
+import groupRoutes from "../backend/routes/groups.js";
 
 const app = express();
 
@@ -33,6 +34,9 @@ app.use("/trips", tripRoutes);
 
 app.use("/api/stops", stopRoutes);
 app.use("/stops", stopRoutes);
+
+app.use("/api/groups", groupRoutes);
+app.use("/groups", groupRoutes);
 
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 
