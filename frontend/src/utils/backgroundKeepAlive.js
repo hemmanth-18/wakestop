@@ -195,6 +195,17 @@ export function startBackgroundAudioKeepAlive(onTickCallback = null) {
  * @param {string|null} audioSrcUrl - URL to play. Defaults to generated alarm beep.
  */
 export function playOnBackgroundAudioElement(audioSrcUrl) {
+  // In native Capacitor app, native AlarmStream plugin handles STREAM_ALARM playback directly.
+  // Do NOT switch backgroundAudioElement to high-volume HTML5 audio because HTML5 audio forces Media Volume (STREAM_MUSIC).
+  if (typeof window !== "undefined" && window.Capacitor?.isNativePlatform()) {
+    try {
+      if (window.Capacitor.Plugins?.AlarmStream?.playAlarm) {
+        window.Capacitor.Plugins.AlarmStream.playAlarm();
+      }
+    } catch (e) {}
+    return true;
+  }
+
   if (!backgroundAudioElement) return false;
 
   const src = audioSrcUrl || getAlarmBeepUrl() || SILENT_WAV_BASE64;

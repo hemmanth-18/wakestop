@@ -607,6 +607,7 @@ export function playAlarmSound(
     try {
       if (window.Capacitor.Plugins?.AlarmStream?.playAlarm) {
         window.Capacitor.Plugins.AlarmStream.playAlarm();
+        return; // Exits early so Web Audio API (which forces STREAM_MUSIC / Media volume) NEVER runs!
       }
     } catch (e) {
       console.warn("Capacitor AlarmStream play error:", e);
