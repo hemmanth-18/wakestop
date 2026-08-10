@@ -48,17 +48,19 @@ export function useGroupSync(groupCode, token, localStage, position) {
     }
   }, [groupCode, token, groupAlarmStage]);
 
-  // Broadcast GPS position every 5 seconds (less aggressive than poll)
+  // Broadcast GPS position every 3 seconds for smooth real-time group tracking
   useEffect(() => {
-    if (!groupCode || !token || !position?.lat) return;
+    const lat = position?.latitude ?? position?.lat;
+    const lng = position?.longitude ?? position?.lng;
+    if (!groupCode || !token || lat == null || lng == null) return;
     const now = Date.now();
-    if (now - lastPositionUpdate.current < 5000) return;
+    if (now - lastPositionUpdate.current < 3000) return;
     lastPositionUpdate.current = now;
 
     groupApi
-      .updatePosition(token, groupCode, position.lat, position.lng)
+      .updatePosition(token, groupCode, lat, lng)
       .catch(() => {});
-  }, [groupCode, token, position?.lat, position?.lng]);
+  }, [groupCode, token, position?.latitude, position?.lat, position?.longitude, position?.lng]);
 
   // Broadcast alarm stage when it changes (only escalate)
   useEffect(() => {

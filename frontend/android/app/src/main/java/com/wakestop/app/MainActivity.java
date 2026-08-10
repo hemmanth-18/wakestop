@@ -1,5 +1,6 @@
 package com.wakestop.app;
 
+import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -25,12 +26,27 @@ public class MainActivity extends BridgeActivity {
         setVolumeControlStream(AudioManager.STREAM_ALARM);
 
         bindToAlarmVolumeStream();
+        startForegroundLocationService();
     }
 
     @Override
     public void onResume() {
         super.onResume();
         bindToAlarmVolumeStream();
+        startForegroundLocationService();
+    }
+
+    private void startForegroundLocationService() {
+        try {
+            Intent serviceIntent = new Intent(this, BackgroundLocationService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void bindToAlarmVolumeStream() {
